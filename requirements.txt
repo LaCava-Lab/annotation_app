@@ -1,0 +1,14 @@
+#Python 3.12
+
+#general
+pandas==1.5.3 
+openpyxl==3.1.2
+tenacity==9.0.0
+
+
+#Streamlit
+streamlit==1.40.1
+st-pages==0.5.0
+
+
+
