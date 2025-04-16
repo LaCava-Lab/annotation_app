@@ -11,7 +11,7 @@ def get_tab_body(tab_name):
     elif tab_name in ["Introduction", "Materials and Methods", "Results", "Discussion", "Legends"]:
         txt = ""
         tmp=df[df.section_title==tab_name]
-        # Get unique subtitles IN ORIGINAL ORDER
+        # Get subtitles in their original order
         subsections = tmp['subtitle'].unique()  # Preserve order
         for sub in subsections:
             if sub=='0':
