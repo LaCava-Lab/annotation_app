@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from various import evaluate_userID, evaluate_email
+from src.various import evaluate_userID, evaluate_email
 from st_pages import hide_pages
 import ast
 from time import sleep
