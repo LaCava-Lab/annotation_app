@@ -1,0 +1,1 @@
+One-dimensional 1H NMR spectrum (with signal intensities plotted versus ppm values) of [15N]-CupS recorded on a BrukerBioSpin Avance-III 950 spectrometer at pH 8.0 and at 293 K. Proton chemical shifts in the amide region were detected without the application of decoupling pulses to 15N. Fig. 1

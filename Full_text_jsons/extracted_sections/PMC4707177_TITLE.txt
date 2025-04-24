@@ -1,0 +1,1 @@
+NOE distance and dihedral angle restraints to calculate the solution structure of the NDH-1 complex subunit CupS from Thermosynechococcus elongatus
