@@ -7,12 +7,30 @@ from time import sleep
 import os
 from datetime import datetime
 
+st.set_page_config(initial_sidebar_state="collapsed")
+
+st.markdown(
+    """
+<style>
+    [data-testid="collapsedControl"] {
+        display: none
+    }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
 # Load dataframes (local path for now)
 data_table = "AWS_S3/users_table.xlsx"
 papers_table = "AWS_S3/papers_table.xlsx"
 
 # Hide sidebar
 st.set_option("client.showSidebarNavigation", False)
+
+# Handle first-load refresh issue
+if "has_rerun" not in st.session_state:
+    st.session_state.has_rerun = True
+    st.rerun()
 
 st.title("Welcome")
 st.text("Welcome to the Annotation App. Please enter your E-Mail and PIN to continue.")
