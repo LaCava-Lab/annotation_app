@@ -7,25 +7,14 @@ from time import sleep
 import os
 from datetime import datetime
 
+# Hide sidebar
 st.set_page_config(initial_sidebar_state="collapsed")
 
-st.markdown(
-    """
-<style>
-    [data-testid="collapsedControl"] {
-        display: none
-    }
-</style>
-""",
-    unsafe_allow_html=True,
-)
+st.set_option("client.showSidebarNavigation", False)
 
 # Load dataframes (local path for now)
 data_table = "AWS_S3/users_table.xlsx"
 papers_table = "AWS_S3/papers_table.xlsx"
-
-# Hide sidebar
-st.set_option("client.showSidebarNavigation", False)
 
 # Handle first-load refresh issue
 if "has_rerun" not in st.session_state:
@@ -37,6 +26,7 @@ st.text("Welcome to the Annotation App. Please enter your E-Mail and PIN to cont
 
 email = st.text_input("E-Mail")
 unique_id = st.text_input("PIN")
+
 
 if st.button("Log in", type="primary"):
     try:
@@ -92,13 +82,14 @@ if st.button("Log in", type="primary"):
     if user_row.empty:
         st.write("First-time user, welcome!")
         try:
+            today_str = datetime.now().strftime("%Y-%m-%d")
             new_user = pd.DataFrame({
                 "e-mail": [email],
                 "userID": [unique_id],
                 "No.Papers": [0],
                 "Papers completed": [None],
                 "Paper in progress": [None],
-                "Last Login": [current_time]
+                "tmpstmp1": [today_str]
             })
 
             # Add the new user to the existing DataFrame
@@ -122,20 +113,38 @@ if st.button("Log in", type="primary"):
             st.session_state["userID"] = unique_id
             st.success("Logged in successfully!")
 
-            # Update the login timestamp
-            users_df.loc[
-                (users_df["userID"] == unique_id) & (users_df["e-mail"] == email),
-                "Last Login"
-            ] = current_time
+            # Get today's date (just the date, not time)
+            today_str = datetime.now().strftime("%Y-%m-%d")
+
+            # Get row index of the user
+            user_index = user_row.index[0]
+
+            # Get all timestamp columns
+            timestamp_columns = [col for col in users_df.columns if col.startswith("tmpstmp")]
+
+            # Get the dates the user already has
+            user_dates = users_df.loc[user_index, timestamp_columns].dropna().astype(str).tolist()
+
+            if today_str not in user_dates:
+                # Find the first empty timestamp column
+                for col in timestamp_columns:
+                    if pd.isna(users_df.at[user_index, col]):
+                        users_df.at[user_index, col] = today_str
+                        break
+                else:
+                    # If all are filled, create a new column
+                    new_col = f"tmpstmp{len(timestamp_columns)+1}"
+                    users_df[new_col] = None
+                    users_df.at[user_index, new_col] = today_str
+
+            # Save the updated DataFrame
             users_df.to_excel(data_table, index=False)
 
             sleep(1)
             temp_file_name = user_row["Paper in progress"].values[0]
             if not pd.isna(temp_file_name):
-                # Move on to resume annotating
                 st.switch_page("pages/1_resume.py")
             else:
-                # Move on to pick papers
                 st.switch_page("pages/2_pick_paper.py")
         except Exception as e:
             st.error(f"Unexpected error during login: {e}")
