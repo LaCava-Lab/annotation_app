@@ -61,3 +61,29 @@ if "userID" in st.session_state:
             else:
                 # If no temp_file_name, move on to the next paper they selected
                 st.switch_page("pages/3_browse_paper.py")
+                import streamlit as st
+
+
+paper_title = "Paper XXXXXXXX"
+protocols = "N"
+solutions = "M"
+annotated = "Q"
+
+st.markdown(f"""
+    <div style='border: 1px solid #444; padding: 20px; border-radius: 8px'>
+        We see that you have already started annotating <b>{paper_title}</b>. You have identified <b>{protocols}</b> protocols and <b>{solutions}</b> solutions in it, and you have already annotated in detail <b>{annotated}</b> of these solutions.
+        <br><br>
+        To continue annotating this paper, press <b>"Continue annotation"</b> below.
+        <br><br>
+        Even though we do not encourage it, if you have really changed your mind about the paper you chose to annotate, then press <b>"Start new annotation"</b>.
+        Please note, we only allow each annotator a maximum of two "abandoned" papers. The "Start new annotation" button will be disabled once you reach this limit.
+    </div>
+    """, unsafe_allow_html=True)
+
+st.write("")
+spacer, col1, big_gap, col2, spacer2 = st.columns([1, 2, 1.5, 2, 1])
+
+with col1:
+    st.button("Continue annotation", type="primary")
+with col2:
+    st.button("Start new annotation", disabled=False) 
