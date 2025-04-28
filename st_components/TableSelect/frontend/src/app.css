@@ -1,0 +1,47 @@
+.TableSelect_Header{
+    margin-bottom: 10px;
+    padding:10px;
+}
+
+.TableSelect_Body{
+
+}
+
+.flex{
+    display: flex;
+}
+
+.flex-1{
+    flex: 1;
+}
+
+.TableSelect_Col_1{
+
+}
+
+.TableSelect_Col_2{
+    min-width: 50px;
+}
+
+.TableSelect_Row{
+/*    background: purple;*/
+    border-radius: 15px;
+    padding:10px;
+    margin-bottom: 10px;
+    transition: .2s;
+    border: 2px solid;
+}
+
+.TableSelect_Row:hover{
+/*    background: red;*/
+    border-radius: 15px;
+    padding:10px;
+    margin-bottom: 10px;
+}
+
+.TableSelect_Row.active{
+    background: gold;
+    border-radius: 15px;
+    padding:10px;
+    margin-bottom: 10px;
+}
