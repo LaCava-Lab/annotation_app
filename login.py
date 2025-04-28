@@ -10,11 +10,25 @@ from datetime import datetime
 # Hide sidebar
 st.set_page_config(initial_sidebar_state="collapsed")
 
-st.set_option("client.showSidebarNavigation", False)
-
 # Load dataframes (local path for now)
 data_table = "AWS_S3/users_table.xlsx"
 papers_table = "AWS_S3/papers_table.xlsx"
+
+if "logged_in" in st.session_state and st.session_state.logged_in:
+    try:
+        users_df = pd.read_excel(data_table)
+        user_row = users_df[users_df["userID"] == st.session_state["userID"]]
+        temp_file_name = user_row["Paper in progress"].values[0]
+
+        if not pd.isna(temp_file_name):
+            st.switch_page("pages/1_resume.py")
+        else:
+            st.switch_page("pages/2_pick_paper.py")
+    except Exception as e:
+        st.error(f"Error loading user data: {e}")
+        st.stop()
+
+st.set_option("client.showSidebarNavigation", False)
 
 # Handle first-load refresh issue
 if "has_rerun" not in st.session_state:
@@ -101,6 +115,7 @@ if st.button("Log in", type="primary"):
             # Save session state
             st.session_state.logged_in = True
             st.session_state["userID"] = unique_id
+            st.set_option("client.showSidebarNavigation", True)
             sleep(1)
             # Move on to pick papers
             st.switch_page("pages/2_pick_paper.py")
@@ -143,8 +158,10 @@ if st.button("Log in", type="primary"):
             sleep(1)
             temp_file_name = user_row["Paper in progress"].values[0]
             if not pd.isna(temp_file_name):
+                st.set_option("client.showSidebarNavigation", True)
                 st.switch_page("pages/1_resume.py")
             else:
+                st.set_option("client.showSidebarNavigation", True)
                 st.switch_page("pages/2_pick_paper.py")
         except Exception as e:
             st.error(f"Unexpected error during login: {e}")
