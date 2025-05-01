@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import json
 import random
+import pandas as pd
 
 st.set_page_config(page_title="Pick Paper", layout="wide")
 st.title("Select the paper you will annotate")
@@ -13,6 +14,9 @@ If you don't like any of the five papers, click the "Refresh paper list" button 
 
 # Path to folder with JSON papers
 JSON_FOLDER = "Full_text_jsons"
+
+# Path to the users table
+USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
 
 # Loads the metadata from JSON files in the specified folder.
 @st.cache_data
@@ -75,6 +79,23 @@ def refresh_paper_list():
         if k in st.session_state:
             del st.session_state[k]
 
+# Function to update the "Paper in progress" column
+def update_paper_in_progress(user_id, pmid):
+    # Load the users table
+    users_df = pd.read_excel(USERS_TABLE_PATH)
+
+    # Find the row corresponding to the user
+    user_row = users_df[users_df["userID"] == user_id]
+
+    if not user_row.empty:
+        # Update the "Paper in progress" column
+        users_df.loc[users_df["userID"] == user_id, "Paper in progress"] = pmid
+
+        # Save the updated table back to the Excel file
+        users_df.to_excel(USERS_TABLE_PATH, index=False)
+    else:
+        print(f"User with ID {user_id} not found.")
+
 # Initialize session state for paper choices
 if "paper_choices" not in st.session_state:
     refresh_paper_list()
@@ -121,6 +142,20 @@ for i, paper in enumerate(st.session_state.paper_choices):
 col2, col3 = st.columns([6, 6])
 with col2:
     if st.button("Go to annotation", type="primary", key="go_button", disabled=not st.session_state.selected_option):
+        # Save the selected paper's metadata in session state
+        selected_paper = next(paper for paper in st.session_state.paper_choices if paper["filename"] == st.session_state.selected_option)
+        st.session_state["selected_paper"] = selected_paper
+
+        # Extract the PMID from the selected paper's JSON file
+        with open(f"{JSON_FOLDER}/{selected_paper['filename']}", "r", encoding="utf-8") as f:
+            raw = json.load(f)
+            pmid = raw[0]["documents"][0]["passages"][0]["infons"].get("article-id_pmid", "PMID not found")
+
+        # Update the "Paper in progress" column for the current user
+        current_user_id = st.session_state.get("userID")  # Ensure userID is stored in session state
+        if current_user_id:
+            update_paper_in_progress(current_user_id, pmid)
+
         # Navigate to the detail_picker page
         st.switch_page("pages/5_detail_picker.py")
 with col3:
