@@ -3,6 +3,10 @@ import pandas as pd
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
 
+
+# Set page config
+st.set_page_config(initial_sidebar_state="expanded", page_title="Paper Annotation", layout="wide")
+
 # Fallback initialization for session state
 if "paper_data" not in st.session_state:
     df = pd.read_csv("AWS_S3/papers/pmid000.csv")
