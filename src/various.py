@@ -1,3 +1,12 @@
+def evaluate_userID_format(userid):
+    if not userid.isdigit():
+        return "PIN must contain only digits."
+
+    if len(userid) <= 3:
+        return "PIN must be longer than 3 digits."
+
+    return None  # Means it's valid
+
 def evaluate_userID(userid):
 	'''
 	userid is a string of digits 0-9, of variable length
@@ -31,7 +40,7 @@ def evaluate_userID(userid):
 def evaluate_email(email):
 	import re
 
-	academic_email_pattern = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(edu|ac\.[a-z]{2,3}|edu\.[a-z]{2,3})$")
+	academic_email_pattern = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 	
 	return re.fullmatch(academic_email_pattern, email)
 
