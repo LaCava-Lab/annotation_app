@@ -4,6 +4,16 @@ from src.various import evaluate_userID, evaluate_email
 from st_pages import hide_pages
 import ast
 from time import sleep
+from src.error_page import show_error_page  # ✅ NEW: import error page
+
+# Session state flag to control error display
+if "show_error" not in st.session_state:
+    st.session_state.show_error = False
+
+# If login previously failed, show error page and stop further code
+if st.session_state.show_error:
+    show_error_page()
+    st.stop()
 
 
 # Load dataframes (local path for now)
@@ -30,36 +40,22 @@ if st.button("Log in", type="primary"):
     # Validate the email format
     if not evaluate_email(email):
         st.error("Invalid email format. Please enter a valid academic email address.")
+        st.session_state.show_error = True
+        st.experimental_rerun()
     else:
         # Validate the User ID format
         if not evaluate_userID(unique_id):
             st.error("Invalid User ID format. Please try again.")
+            st.session_state.show_error = True
+            st.experimental_rerun()
         else:
             # Check if the email and User ID match in the database
             user_row = users_df[(users_df["e-mail"] == email) & (users_df["userID"] == unique_id)]
 
             if user_row.empty:
-                st.write("First-time user, welcome!")
-                new_user = pd.DataFrame({
-                    "e-mail": [email], 
-                    "userID": [unique_id],
-                    "No.Papers": [0],
-                    "Papers completed": [None], 
-                    "Paper in progress": [None]
-                    # Add any other columns that exist in users_table
-                })
-                # Add the new user to the existing DataFrame
-                users_df = pd.concat([users_df, new_user], ignore_index=True)
-                # Save the updated DataFrame back to the file
-                users_df.to_excel("AWS_S3/users_table.xlsx", index=False)
-                st.success("Your account has been created successfully!")
+                st.session_state.show_error = True
+                st.experimental_rerun()
 
-                # Save session state
-                st.session_state.logged_in = True
-                st.session_state["userID"] = unique_id
-                sleep(1)
-                # Move on to pick papers
-                st.switch_page("pages/2_pick_paper.py")
             else:
                 # Returing user, save session state
                 st.session_state.logged_in = True
