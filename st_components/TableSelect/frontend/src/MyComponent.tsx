@@ -5,19 +5,15 @@ import {
 } from "streamlit-component-lib"
 import React, { useCallback, useEffect, useMemo, useState, ReactElement } from "react"
 
-function MyComponent({args, disabled, theme}: ComponentProps): ReactElement {
-
+function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
   const [isHovered, setIsHovered] = useState(false)
-//  console.log(isHovered)
-
-//  console.log(theme)
 
   const style: React.CSSProperties = useMemo(() => {
     if (!theme) return {}
 
-    const backgroundColor = `backgroundColor: ${isHovered ? (theme as any).primaryColor : "transparent" }`
+    const backgroundColor = `backgroundColor: ${isHovered ? (theme as any).primaryColor : "transparent"}`
     const borderColor = `${(theme as any).borderColor}`
-    return { borderColor, }
+    return { borderColor }
   }, [theme])
 
   useEffect(() => {
@@ -26,18 +22,16 @@ function MyComponent({args, disabled, theme}: ComponentProps): ReactElement {
 
   useEffect(() => {
     Streamlit.setFrameHeight()
-//    localStorage.setItem('key', 'value')
-//    console.log("table --> ", localStorage.setItem('key', 'value'))
   }, [])
 
   const onMouseOver = useCallback((): void => {
     setIsHovered(true)
-    localStorage.setItem('key', 'value')
+    localStorage.setItem("key", "value")
   }, [])
 
   const onMouseOut = useCallback((): void => {
     setIsHovered(false)
-    console.log("table --> ", localStorage.setItem('key', 'value'))
+    console.log("table --> ", localStorage.setItem("key", "value"))
   }, [])
 
   return (

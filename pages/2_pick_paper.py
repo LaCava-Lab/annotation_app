@@ -4,7 +4,7 @@ import json
 import random
 import pandas as pd
 
-st.set_page_config(page_title="Pick Paper", layout="wide")
+st.set_page_config(page_title="Pick Paper", layout="wide", initial_sidebar_state="collapsed")
 st.title("Select the paper you will annotate")
 
 st.markdown("""
@@ -157,6 +157,7 @@ with col2:
             update_paper_in_progress(current_user_id, pmid)
 
         # Navigate to the detail_picker page
+        st.set_option("client.showSidebarNavigation", False)
         st.switch_page("pages/5_detail_picker.py")
 with col3:
     st.button("Refresh paper list", type="secondary", key="refresh_button", on_click=refresh_paper_list)

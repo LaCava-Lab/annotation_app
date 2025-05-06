@@ -26,9 +26,10 @@ if "userID" in st.session_state:
     user_row = users_df[users_df["userID"] == user_id]
 
     # Convert "Papers completed" to a list of strings
-    papers_completed = user_row["Papers completed"] = user_row["Papers completed"].apply(
+    users_df.loc[users_df["userID"] == user_id, "Papers completed"] = users_df.loc[users_df["userID"] == user_id, "Papers completed"].apply(
         lambda x: ast.literal_eval(x) if isinstance(x, str) else []
     )
+    papers_completed = users_df.loc[users_df["userID"] == user_id, "Papers completed"].values[0]
     no_papers = user_row["No.Papers"].values[0]
 
     if len(papers_completed) == no_papers:
