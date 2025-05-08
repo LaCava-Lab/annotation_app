@@ -5,7 +5,6 @@ from st_pages import hide_pages
 import ast
 from time import sleep
 
-
 # Load dataframes (local path for now)
 data_table = "AWS_S3/users_table.xlsx"
 papers_table = "AWS_S3/papers_table.xlsx"
