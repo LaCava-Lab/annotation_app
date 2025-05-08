@@ -1,0 +1,12 @@
+.breadcrumb {
+    justify-content: center;
+}
+
+.breadcrumb-item::before{
+    line-height: 38px;
+}
+
+.a{
+    line-height: 38px;
+
+}
