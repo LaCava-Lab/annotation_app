@@ -3,6 +3,9 @@ import pandas as pd
 import ast
 from pathlib import Path
 from time import sleep
+from streamlit_cookies_manager import CookieManager
+from src.various import get_pmid
+from src.various import handle_redirects
 
 # Define the base directory as the parent directory of this script
 base_dir = Path(__file__).resolve().parent.parent 
@@ -11,7 +14,17 @@ base_dir = Path(__file__).resolve().parent.parent
 data_file = base_dir / "AWS_S3" / "users_table.xlsx"
 papers_table = base_dir / "AWS_S3" / "papers_table.xlsx"
 
+# Initialize the cookie manager
+cookies = CookieManager(prefix="annotation_app_")
+if not cookies.ready():
+    st.stop()
+
+handle_redirects(cookies)
+
 st.title("Welcome Back!")
+
+# Fetch the PMID
+pmid = get_pmid(cookies)
 
 # # Check if user is logged in
 if "userID" in st.session_state:
@@ -64,8 +77,8 @@ if "userID" in st.session_state:
                 st.switch_page("pages/3_browse_paper.py")
                 import streamlit as st
 
-
-paper_title = "Paper XXXXXXXX"
+# paper title is Paper + extracted PMID
+paper_title = "Paper " + pmid
 protocols = "N"
 solutions = "M"
 annotated = "Q"

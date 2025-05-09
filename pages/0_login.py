@@ -10,11 +10,27 @@ from datetime import datetime
 # Hide sidebar
 st.set_page_config(initial_sidebar_state="collapsed")
 
+from streamlit_cookies_manager import CookieManager
+
+# Initialize the cookie manager
+cookies = CookieManager(
+    prefix="annotation_app_",  # Prefix for your app's cookies
+)
+if not cookies.ready():
+    st.stop()
+
 # Load dataframes (local path for now)
 data_table = "AWS_S3/users_table.xlsx"
 papers_table = "AWS_S3/papers_table.xlsx"
 
-if "logged_in" in st.session_state and st.session_state.logged_in:
+# Check cookies for session state
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = cookies.get("logged_in", False)
+if "userID" not in st.session_state:
+    st.session_state["userID"] = cookies.get("userID", None)
+
+# Redirection logic
+if st.session_state.logged_in:
     try:
         users_df = pd.read_excel(data_table)
         user_row = users_df[users_df["userID"] == st.session_state["userID"]]
@@ -28,19 +44,11 @@ if "logged_in" in st.session_state and st.session_state.logged_in:
         st.error(f"Error loading user data: {e}")
         st.stop()
 
-st.set_option("client.showSidebarNavigation", False)
-
-# Handle first-load refresh issue
-if "has_rerun" not in st.session_state:
-    st.session_state.has_rerun = True
-    st.rerun()
-
 st.title("Welcome")
 st.text("Welcome to the Annotation App. Please enter your E-Mail and PIN to continue.")
 
 email = st.text_input("E-Mail")
 unique_id = st.text_input("PIN")
-
 
 if st.button("Log in", type="primary"):
     try:
@@ -112,9 +120,12 @@ if st.button("Log in", type="primary"):
             users_df.to_excel(data_table, index=False)
             st.success("Your account has been created successfully!")
 
-            # Save session state
+            # Save session state and cookies
             st.session_state.logged_in = True
             st.session_state["userID"] = unique_id
+            cookies["logged_in"] = True
+            cookies["userID"] = unique_id
+
             st.set_option("client.showSidebarNavigation", True)
             sleep(1)
             # Move on to pick papers
@@ -122,10 +133,14 @@ if st.button("Log in", type="primary"):
         except Exception as e:
             st.error(f"Failed to create new user: {e}")
     else:
-        # Returing user, save session state
+        # Returning user, save session state and cookies
         try:
             st.session_state.logged_in = True
             st.session_state["userID"] = unique_id
+            cookies["logged_in"] = True
+            cookies["userID"] = unique_id
+            cookies.save()
+
             st.success("Logged in successfully!")
 
             # Get today's date (just the date, not time)

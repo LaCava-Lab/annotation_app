@@ -5,6 +5,21 @@ import random
 import pandas as pd
 
 st.set_page_config(page_title="Pick Paper", layout="wide", initial_sidebar_state="collapsed")
+
+
+from streamlit_cookies_manager import CookieManager
+from src.various import handle_redirects
+
+# Initialize the cookie manager
+cookies = CookieManager(
+    prefix="annotation_app_",  # Prefix for your app's cookies
+)
+
+if not cookies.ready():
+    st.stop()
+
+handle_redirects(cookies)
+
 st.title("Select the paper you will annotate")
 
 st.markdown("""
@@ -93,6 +108,12 @@ def update_paper_in_progress(user_id, pmid):
 
         # Save the updated table back to the Excel file
         users_df.to_excel(USERS_TABLE_PATH, index=False)
+
+        # Save the updated paper PMID in cookies and session state
+        st.session_state["paper_in_progress"] = pmid
+
+        cookies["paper_in_progress"] = pmid
+        cookies.save()
     else:
         print(f"User with ID {user_id} not found.")
 
