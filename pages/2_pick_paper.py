@@ -6,14 +6,11 @@ import pandas as pd
 
 st.set_page_config(page_title="Pick Paper", layout="wide", initial_sidebar_state="collapsed")
 
-
 from streamlit_cookies_manager import CookieManager
 from src.various import handle_redirects
 
 # Initialize the cookie manager
-cookies = CookieManager(
-    prefix="annotation_app_",  # Prefix for your app's cookies
-)
+cookies = CookieManager(prefix="annotation_app_")
 
 if not cookies.ready():
     st.stop()
@@ -33,6 +30,22 @@ JSON_FOLDER = "Full_text_jsons"
 # Path to the users table
 USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
 
+# Load the users table
+users_df = pd.read_excel(USERS_TABLE_PATH)
+
+# Get the current user's completed papers
+current_user_id = st.session_state.get("userID")
+if current_user_id:
+    user_row = users_df[users_df["userID"] == current_user_id]
+    if not user_row.empty:
+        papers_completed = user_row["Papers completed"].values[0]
+        if isinstance(papers_completed, str):
+            papers_completed = eval(papers_completed)  # Convert string to list
+    else:
+        papers_completed = []
+else:
+    papers_completed = []
+
 # Loads the metadata from JSON files in the specified folder.
 @st.cache_data
 def load_paper_metadata():
@@ -46,6 +59,10 @@ def load_paper_metadata():
                     front = doc["passages"][0]  # front matter
                     meta = front["infons"]
                     title = front["text"]
+                    # Extract the PMID
+                    pmid = meta.get("article-id_pmid", None)
+                    if pmid and pmid in papers_completed:
+                        continue  # Skip papers that are already completed
 
                     # Extract and clean up authors
                     authors = []
@@ -76,7 +93,8 @@ def load_paper_metadata():
                         "year": meta.get("year", "?"),
                         "doi": meta.get("article-id_doi", ""),
                         "link": f"https://doi.org/{meta.get('article-id_doi', '')}",
-                        "filename": filename
+                        "filename": filename,
+                        "pmid": pmid
                     })
             except Exception as e:
                 print(f"Skipping {filename}: {e}")
@@ -87,6 +105,8 @@ all_papers = load_paper_metadata()
 # Function to refresh paper list
 def refresh_paper_list():
     num_to_select = min(5, len(all_papers))
+    if num_to_select < 5:
+        st.warning("Not enough papers available to display 5 options.")
     st.session_state.paper_choices = random.sample(all_papers, k=num_to_select)
     st.session_state.selected_option = None
     # Clear checkbox states
@@ -173,7 +193,6 @@ with col2:
             pmid = raw[0]["documents"][0]["passages"][0]["infons"].get("article-id_pmid", "PMID not found")
 
         # Update the "Paper in progress" column for the current user
-        current_user_id = st.session_state.get("userID")  # Ensure userID is stored in session state
         if current_user_id:
             update_paper_in_progress(current_user_id, pmid)
 
