@@ -17,7 +17,11 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-st.title("Select the paper you will annotate")
+st.markdown("""
+    <div style="margin-top: -70px;">
+        <h1>Select the paper you will annotate</h1>
+    </div>
+""", unsafe_allow_html=True)
 
 st.markdown("""
 Go through the list of five options we offer below and select the paper you are most comfortable with.
@@ -213,8 +217,7 @@ with col2:
         if current_user_id:
             update_paper_in_progress(current_user_id, pmid)
 
-        # Navigate to the detail_picker page
-        st.set_option("client.showSidebarNavigation", False)
-        st.switch_page("pages/5_detail_picker.py")
+        # Navigate to the browse paper page
+        st.switch_page("pages/3_browse_paper.py")
 with col3:
     st.button("Refresh paper list", type="secondary", key="refresh_button", on_click=refresh_paper_list)
