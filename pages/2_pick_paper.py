@@ -46,6 +46,22 @@ if current_user_id:
 else:
     papers_completed = []
 
+# Get the current user's abandoned papers
+if current_user_id:
+    user_row = users_df[users_df["userID"] == current_user_id]
+    if not user_row.empty:
+        # Check if "Papers abandoned" column exists
+        if "Papers abandoned" in user_row.columns:
+            papers_abandoned = user_row["Papers abandoned"].values[0]
+            if isinstance(papers_abandoned, str):
+                papers_abandoned = eval(papers_abandoned)  # Convert string to list
+        else:
+            papers_abandoned = []  # Initialize as an empty list if the column doesn't exist
+    else:
+        papers_abandoned = []
+else:
+    papers_abandoned = []
+
 # Loads the metadata from JSON files in the specified folder.
 @st.cache_data
 def load_paper_metadata():
@@ -61,8 +77,9 @@ def load_paper_metadata():
                     title = front["text"]
                     # Extract the PMID
                     pmid = meta.get("article-id_pmid", None)
-                    if pmid and pmid in papers_completed:
-                        continue  # Skip papers that are already completed
+                    if pmid and (pmid in papers_completed or pmid in papers_abandoned):
+                        print(f"Skipping {filename}: already completed or abandoned")
+                        continue  # Skip papers that are already completed or abandoned
 
                     # Extract and clean up authors
                     authors = []
