@@ -11,8 +11,22 @@ import os
 from streamlit_cookies_manager import CookieManager
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
+# from st_components.BreadCrumbs import BreadCrumbs
+
+# Set page config
+st.set_page_config(initial_sidebar_state="expanded", page_title="Paper Annotation", layout="wide")
+
+st.set_option("client.showSidebarNavigation", False)
+
+import pandas as pd
+import json
+import os
+from streamlit_cookies_manager import CookieManager
+from text_highlighter import text_highlighter
+from st_components.TableSelect import TableSelect
 from src.various import get_pmid
 from src.various import handle_redirects
+# from st_components.BreadCrumbs import BreadCrumbs
 
 # Initialize the cookie manager
 cookies = CookieManager(prefix="annotation_app_")
@@ -87,6 +101,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+links = [
+    {"label": "Protocol Picker"},
+    {"label": "Solution Picker"},
+    {"label": "Protocol Details"},
+    {"label": "Solution Details"},
+]
+
 with st.sidebar:
     # Use the DOI link dynamically
     doi_link = st.session_state.get("doi_link")
@@ -95,7 +116,20 @@ with st.sidebar:
     else:
         st.write("DOI link not available for this paper.")
     st.title("Paper Annotation")
-    TableSelect()
+    table = TableSelect()
+
+# pageSelected = BreadCrumbs(links)
+#
+# if pageSelected == "Protocol Picker":
+#     st.title("Protocol Picker")
+# elif pageSelected == "Solution Picker":
+#     st.title("Solution Picker")
+# elif pageSelected == "Protocol Details":
+#     st.title("Protocol Details")
+# elif pageSelected == "Solution Details":
+#     st.title("Solution Details")
+# else:
+#     st.title("Unknown Page")
 
 # Functions to load paper text + labels
 @st.cache_data
