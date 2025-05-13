@@ -1,35 +1,21 @@
 import streamlit as st
-
-# Set page config
-st.set_page_config(initial_sidebar_state="expanded", page_title="Paper Annotation", layout="wide")
-
-st.set_option("client.showSidebarNavigation", False)
-
 import pandas as pd
 import json
 import os
-from streamlit_cookies_manager import CookieManager
-from text_highlighter import text_highlighter
-from st_components.TableSelect import TableSelect
-# from st_components.BreadCrumbs import BreadCrumbs
 
 # Set page config
 st.set_page_config(initial_sidebar_state="expanded", page_title="Paper Annotation", layout="wide")
-
 st.set_option("client.showSidebarNavigation", False)
 
-import pandas as pd
-import json
-import os
 from streamlit_cookies_manager import CookieManager
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
-from src.various import get_pmid
-from src.various import handle_redirects
+from src.various import get_pmid, handle_redirects
 # from st_components.BreadCrumbs import BreadCrumbs
 
 # Initialize the cookie manager
 cookies = CookieManager(prefix="annotation_app_")
+
 if not cookies.ready():
     st.stop()
 
