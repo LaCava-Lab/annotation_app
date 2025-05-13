@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useMemo, useState, ReactElement } from "
 
 function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
   const [isHovered, setIsHovered] = useState(false)
+  const [isActive, setIsActive] = useState("")
 
   const style: React.CSSProperties = useMemo(() => {
     if (!theme) return {}
@@ -34,20 +35,34 @@ function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
     console.log("table --> ", localStorage.setItem("key", "value"))
   }, [])
 
+  const setActive = useCallback((category) => {
+    setIsActive(category)
+    Streamlit.setComponentValue(category)
+
+    if (isActive === category) {
+      setIsActive("")
+      Streamlit.setComponentValue("")
+    }
+}, [isActive])
+
+  const isRowActive = useCallback((category): Boolean => {
+    return isActive === category;
+  }, [isActive])
+
   return (
-    <span>
+    <span className="disable-select">
       <div className="TableSelect_Header flex">
         <div className="TableSelect_Col_1">Experiment name</div>
         <div className="flex-1"></div>
         <div className="TableSelect_Col_2">Type</div>
       </div>
       <div className="TableSelect_Body">
-        <div style={style} onMouseOver={onMouseOver} onMouseOut={onMouseOut} className="TableSelect_Row flex">
+        <div style={style} onClick={() => setActive("Immunoprecipitation")} onMouseOver={onMouseOver} onMouseOut={onMouseOut} className={`TableSelect_Row flex ${isRowActive('Immunoprecipitation') ? 'active' : ''}`}>
           <div className="TableSelect_Col_1">Immunoprecipitation</div>
           <div className="flex-1"></div>
           <div className="TableSelect_Col_2">PI</div>
         </div>
-        <div style={style} className="TableSelect_Row flex">
+        <div style={style} onClick={() => setActive("MS screen")} className={`TableSelect_Row flex ${isRowActive('MS screen') ? 'active' : ''}`}>
           <div className="TableSelect_Col_1">MS screen</div>
           <div className="flex-1"></div>
           <div className="TableSelect_Col_2">non-PI</div>
