@@ -1,4 +1,9 @@
 import streamlit as st
+
+# Hide sidebar
+st.set_page_config(initial_sidebar_state="collapsed")
+st.set_option("client.showSidebarNavigation", False)
+
 import pandas as pd
 from src.various import evaluate_userID, evaluate_email, evaluate_userID_format
 from st_pages import hide_pages
@@ -6,15 +11,11 @@ import ast
 from time import sleep
 import os
 from datetime import datetime
-
-# Hide sidebar
-st.set_page_config(initial_sidebar_state="collapsed")
-
 from streamlit_cookies_manager import CookieManager
 
 # Initialize the cookie manager
 cookies = CookieManager(
-    prefix="annotation_app_",  # Prefix for your app's cookies
+    prefix="annotation_app_",
 )
 if not cookies.ready():
     st.stop()

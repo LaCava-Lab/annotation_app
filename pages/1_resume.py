@@ -74,12 +74,12 @@ if "userID" in st.session_state:
     #                 st.warning("No matching paper found in the papers table!")
 
     #             if st.button("Continue annotating"):
-    #                 st.switch_page("pages/3_browse_paper.py")
+    #                 st.switch_page("pages/4_question_cascade.py")
     #             elif st.button("Choose a new paper"):
     #                 st.switch_page("pages/2_pick_paper.py")
     #         else:
     #             # If no temp_file_name, move on to the next paper they selected
-    #             st.switch_page("pages/3_browse_paper.py")
+    #             st.switch_page("pages/4_question_cascade.py")
     #             import streamlit as st
 
 # paper title is Paper + extracted PMID

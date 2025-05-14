@@ -135,28 +135,6 @@ def refresh_paper_list():
         if k in st.session_state:
             del st.session_state[k]
 
-# Function to update the "Paper in progress" column
-def update_paper_in_progress(user_id, pmid):
-    # Load the users table
-    users_df = pd.read_excel(USERS_TABLE_PATH)
-
-    # Find the row corresponding to the user
-    user_row = users_df[users_df["userID"] == user_id]
-
-    if not user_row.empty:
-        # Update the "Paper in progress" column
-        users_df.loc[users_df["userID"] == user_id, "Paper in progress"] = pmid
-
-        # Save the updated table back to the Excel file
-        users_df.to_excel(USERS_TABLE_PATH, index=False)
-
-        # Save the updated paper PMID in cookies and session state
-        st.session_state["paper_in_progress"] = pmid
-
-        cookies["paper_in_progress"] = pmid
-        cookies.save()
-    else:
-        print(f"User with ID {user_id} not found.")
 
 # Initialize session state for paper choices
 if "paper_choices" not in st.session_state:
@@ -206,18 +184,16 @@ with col2:
     if st.button("Go to annotation", type="primary", key="go_button", disabled=not st.session_state.selected_option):
         # Save the selected paper's metadata in session state
         selected_paper = next(paper for paper in st.session_state.paper_choices if paper["filename"] == st.session_state.selected_option)
-        st.session_state["selected_paper"] = selected_paper
 
         # Extract the PMID from the selected paper's JSON file
         with open(f"{JSON_FOLDER}/{selected_paper['filename']}", "r", encoding="utf-8") as f:
             raw = json.load(f)
             pmid = raw[0]["documents"][0]["passages"][0]["infons"].get("article-id_pmid", "PMID not found")
 
-        # Update the "Paper in progress" column for the current user
-        if current_user_id:
-            update_paper_in_progress(current_user_id, pmid)
+        st.session_state["selected_paper"] = pmid
+        cookies["selected_paper"] = pmid
 
         # Navigate to the browse paper page
-        st.switch_page("pages/3_browse_paper.py")
+        st.switch_page("pages/4_question_cascade.py")
 with col3:
     st.button("Refresh paper list", type="secondary", key="refresh_button", on_click=refresh_paper_list)
