@@ -88,6 +88,20 @@ def get_pmid(cookies : CookieManager) -> str:
     st.switch_page("pages/2_pick_paper.py")
     st.stop()
 
+def get_selected_paper(cookies : CookieManager):
+    # Check if selected paper is in session state
+    if "selected_paper" in st.session_state:
+        return st.session_state["selected_paper"]
+
+    # Check if selected paper is in cookies
+    selected_paper_from_cookies = cookies.get("selected_paper")
+    if selected_paper_from_cookies:
+        st.session_state["selected_paper"] = selected_paper_from_cookies
+        return selected_paper_from_cookies
+
+    # If not found, return None
+    return None
+     
 
 def handle_redirects(cookies : CookieManager):
     # Check cookies for session state
