@@ -6,7 +6,7 @@ from streamlit_cookies_manager import CookieManager
 from src.various import handle_redirects, get_selected_paper
 
 # Set page config
-st.set_page_config(page_title="Browse Paper", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Questionnaire", layout="wide", initial_sidebar_state="collapsed")
 
 # Initialize the cookie manager
 cookies = CookieManager(prefix="annotation_app_")
@@ -15,7 +15,6 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-# Paths
 JSON_FOLDER = "Full_text_jsons"
 USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
 
@@ -28,7 +27,7 @@ def load_paper_by_pmid(pmid):
                     raw = json.load(f)
                     # Check if the PMID matches
                     doc = raw[0]["documents"][0]
-                    front = doc["passages"][0]  # Front matter
+                    front = doc["passages"][0]
                     meta = front["infons"]
                     extracted_pmid = meta.get("article-id_pmid", None)
                     if extracted_pmid == pmid:
@@ -73,7 +72,7 @@ raw = load_paper_by_pmid(pmid)
 doc = raw[0]["documents"][0]
 
 # Extract paper metadata
-front = doc["passages"][0]  # Front matter
+front = doc["passages"][0]
 meta = front["infons"]
 title = front["text"]
 # Extract and clean up authors
@@ -109,7 +108,7 @@ if year != "?":
 doi = meta.get("article-id_doi", "")
 doi_link = f"https://doi.org/{doi}" if doi else None
 
-# Display paper metadata with reduced top margin
+# Display paper metadata
 st.markdown(f"""
     <div style="margin-top: -50px;">
         <h3>You have selected to annotate the paper:</h3>
@@ -119,9 +118,9 @@ st.markdown(f"""
 if metadata_parts:
     st.markdown(", ".join(metadata_parts))
 
-# Add a centered descriptive paragraph
+# Description
 st.markdown("###")
-col1, col2, col3 = st.columns([0.5, 3, 0.5])  # Create three columns for centering
+col1, col2, col3 = st.columns([0.5, 3, 0.5])
 with col2:  # Use the middle column
     st.markdown("""
         <div style="text-align: center; margin-bottom: -100px; margin-top: -40px;">
@@ -132,20 +131,21 @@ with col2:  # Use the middle column
         </div>
     """, unsafe_allow_html=True)
 
-# Center the "Go to full-text paper" button
+# "Go to full-text paper" button
 st.markdown("###")
-col1, col2, col3 = st.columns([1.5, 1, 1])  # Create three columns for centering
-with col2:  # Use the middle column
+col1, col2, col3 = st.columns([1.5, 1, 1])  # Creating three columns for centering
+with col2:
     if doi_link:
         st.button("Go to full-text paper", on_click=lambda: st.write(f"[Go to full-text paper]({doi_link})"))
     else:
         st.warning("DOI link not available for this paper.")
+
 # Questionnaire
 st.markdown("### Questionnaire")
 
 # Question 1
 st.markdown('<div>1. Is the paper describing wet lab experiments that aim to understand protein interactions?</div>', unsafe_allow_html=True)
-col1, col2 = st.columns([1, 200])  # Create two columns for better layout
+col1, col2 = st.columns([1, 200])  # Creating two columns for better layout
 with col1:
     st.markdown("")
 with col2:
@@ -153,7 +153,7 @@ with col2:
 
 # Sub-question 1a
 st.markdown('<div style="padding-left: 20px; margin-bottom: 10px;">1a. What is the main method the authors use to understand protein interactions?</div>', unsafe_allow_html=True)
-col1, col2 = st.columns([1, 60])  # Create two columns for better layout
+col1, col2 = st.columns([1, 60])
 with col1:
     st.markdown("")
 with col2:
@@ -161,7 +161,7 @@ with col2:
 
 # Sub-question 1b
 st.markdown('<div style="padding-left: 20px;">1b. Is this method preserving protein interactions in a cell-free system (e.g., whole cell extracts)?</div>', unsafe_allow_html=True)
-col1, col2 = st.columns([1, 50])  # Create two columns for better layout
+col1, col2 = st.columns([1, 50]) 
 with col1:
     st.markdown("")
 with col2:
@@ -169,7 +169,7 @@ with col2:
 
 # Sub-question 1c
 st.markdown('<div style="padding-left: 20px;">1c. Is this method using any type of cross-linking to preserve protein interactions?</div>', unsafe_allow_html=True)
-col1, col2 = st.columns([1, 50])  # Create two columns for better layout
+col1, col2 = st.columns([1, 50])
 with col1:
     st.markdown("")
 with col2:
@@ -199,13 +199,13 @@ all_filled = (
     q3 is not None
 )
 
-col1, col2, col3 = st.columns([1.5, 1, 1])  # Adjust column widths to center the buttons properly
-with col1:  # Place "Pick another" button in the left column
+col1, col2, col3 = st.columns([1.5, 1, 1])
+with col1:  #"Pick another" button
     if st.button("Pick another paper", type="secondary", key="pick_another_button"):
         st.session_state["selected_paper"] = None
         cookies["selected_paper"] = None
         st.switch_page("pages/2_pick_paper.py")
-with col2:  # Use the middle column for "Confirm paper" button
+with col2:  # "Confirm paper" button
     st.button(
         "Confirm paper",
         type="primary",
