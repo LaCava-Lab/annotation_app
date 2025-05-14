@@ -113,4 +113,4 @@ def handle_redirects(cookies : CookieManager):
 
     if not st.session_state.logged_in:
         st.set_option("client.showSidebarNavigation", False)
-        st.switch_page("pages/0_login.py")
+        st.switch_page("login.py")
