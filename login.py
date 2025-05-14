@@ -38,8 +38,10 @@ if st.session_state.logged_in:
         temp_file_name = user_row["Paper in progress"].values[0]
 
         if not pd.isna(temp_file_name):
+            st.set_option("client.showSidebarNavigation", True)
             st.switch_page("pages/1_resume.py")
         else:
+            st.set_option("client.showSidebarNavigation", True)
             st.switch_page("pages/2_pick_paper.py")
     except Exception as e:
         st.error(f"Error loading user data: {e}")
