@@ -55,7 +55,7 @@ def evaluate_email(email):
 	return re.fullmatch(academic_email_pattern, email)
 
 # Function to fetch the PMID
-def get_pmid(cookies : CookieManager) -> str:
+def get_pmid(cookies : CookieManager, redir: bool = True) -> str:
     # Check if PMID is in session state
     if "paper_in_progress" in st.session_state:
         return st.session_state["paper_in_progress"]
@@ -85,9 +85,12 @@ def get_pmid(cookies : CookieManager) -> str:
             st.error(f"Error fetching PMID from users table: {e}")
 
     # If PMID is not found anywhere
-    st.set_option("client.showSidebarNavigation", True)
-    st.switch_page("pages/2_pick_paper.py")
-    st.stop()
+    if(redir):
+        st.set_option("client.showSidebarNavigation", True)
+        st.switch_page("pages/2_pick_paper.py")
+        st.stop()
+    
+    return None
 
 def get_selected_paper(cookies : CookieManager):
     # Check if selected paper is in session state

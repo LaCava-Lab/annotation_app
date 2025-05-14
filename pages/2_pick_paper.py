@@ -3,6 +3,7 @@ import os
 import json
 import random
 import pandas as pd
+from src.various import get_pmid
 
 st.set_page_config(page_title="Pick Paper", layout="wide", initial_sidebar_state="collapsed")
 
@@ -16,6 +17,12 @@ if not cookies.ready():
     st.stop()
 
 handle_redirects(cookies)
+
+pmid = get_pmid(cookies, False)
+
+# If paper already in progress then redirect to the annotation page
+if(pmid):
+    st.switch_page("pages/5_detail_picker.py")
 
 st.markdown("""
     <div style="margin-top: -70px;">
