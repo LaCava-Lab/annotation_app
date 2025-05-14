@@ -85,6 +85,7 @@ def get_pmid(cookies : CookieManager) -> str:
             st.error(f"Error fetching PMID from users table: {e}")
 
     # If PMID is not found anywhere
+    st.set_option("client.showSidebarNavigation", True)
     st.switch_page("pages/2_pick_paper.py")
     st.stop()
 
