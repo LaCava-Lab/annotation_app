@@ -41,7 +41,6 @@ st.text("Welcome to the Annotation App. Please enter your E-Mail and PIN to cont
 email = st.text_input("E-Mail")
 unique_id = st.text_input("PIN")
 
-
 if st.button("Log in", type="primary"):
     try:
         # File missing/corrupt
@@ -71,18 +70,14 @@ if st.button("Log in", type="primary"):
 
     # Validate the email format
     if not evaluate_email(email):
-        st.error("Invalid email format. Please enter a valid academic email address.")
-        st.stop()
-    
+        st.switch_page("pages/8_error_page.py")
+
     error_message = evaluate_userID_format(unique_id)
     if error_message:
-        st.error(error_message)
-        st.stop()
+        st.switch_page("pages/8_error_page.py")
 
-    # Validate the user ID format
     if not evaluate_userID(unique_id):
-        st.error("Invalid PIN. Please try again.")
-        st.stop()
+        st.switch_page("pages/8_error_page.py")
 
     # Lookup user
     try:
@@ -91,77 +86,39 @@ if st.button("Log in", type="primary"):
         st.error(f"Error validating user credentials: {e}")
         st.stop()
 
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     if user_row.empty:
-        st.write("First-time user, welcome!")
-        try:
-            today_str = datetime.now().strftime("%Y-%m-%d")
-            new_user = pd.DataFrame({
-                "e-mail": [email],
-                "userID": [unique_id],
-                "No.Papers": [0],
-                "Papers completed": [None],
-                "Paper in progress": [None],
-                "tmpstmp1": [today_str]
-            })
-
-            # Add the new user to the existing DataFrame
-            users_df = pd.concat([users_df, new_user], ignore_index=True)
-            # Save the updated DataFrame back to the file
-            users_df.to_excel(data_table, index=False)
-            st.success("Your account has been created successfully!")
-
-            # Save session state
-            st.session_state.logged_in = True
-            st.session_state["userID"] = unique_id
-            st.set_option("client.showSidebarNavigation", True)
-            sleep(1)
-            # Move on to pick papers
-            st.switch_page("pages/2_pick_paper.py")
-        except Exception as e:
-            st.error(f"Failed to create new user: {e}")
+        st.switch_page("pages/8_error_page.py")
     else:
-        # Returing user, save session state
         try:
             st.session_state.logged_in = True
             st.session_state["userID"] = unique_id
             st.success("Logged in successfully!")
 
-            # Get today's date (just the date, not time)
             today_str = datetime.now().strftime("%Y-%m-%d")
-
-            # Get row index of the user
             user_index = user_row.index[0]
-
-            # Get all timestamp columns
             timestamp_columns = [col for col in users_df.columns if col.startswith("tmpstmp")]
-
-            # Get the dates the user already has
             user_dates = users_df.loc[user_index, timestamp_columns].dropna().astype(str).tolist()
 
             if today_str not in user_dates:
-                # Find the first empty timestamp column
                 for col in timestamp_columns:
                     if pd.isna(users_df.at[user_index, col]):
                         users_df.at[user_index, col] = today_str
                         break
                 else:
-                    # If all are filled, create a new column
                     new_col = f"tmpstmp{len(timestamp_columns)+1}"
                     users_df[new_col] = None
                     users_df.at[user_index, new_col] = today_str
 
-            # Save the updated DataFrame
             users_df.to_excel(data_table, index=False)
 
             sleep(1)
             temp_file_name = user_row["Paper in progress"].values[0]
+            st.set_option("client.showSidebarNavigation", True)
+
             if not pd.isna(temp_file_name):
-                st.set_option("client.showSidebarNavigation", True)
                 st.switch_page("pages/1_resume.py")
             else:
-                st.set_option("client.showSidebarNavigation", True)
                 st.switch_page("pages/2_pick_paper.py")
+
         except Exception as e:
             st.error(f"Unexpected error during login: {e}")
