@@ -18,7 +18,7 @@ if not cookies.ready():
 handle_redirects(cookies)
 
 # Set this variable to 1, 2, or 3 to test different pages
-confirm_page = 2
+confirm_page = 3
 
 # Get the PMID from cookies
 pmid = get_pmid(cookies)
@@ -42,23 +42,13 @@ def get_doi_link(pmid):
 
 doi_link = get_doi_link(pmid)
 
-# --- Breadcrumbs ---
-st.markdown(
-    """
-    <div style="font-size: 15px; margin-bottom: 10px;">
-        <a href="#">Experiment picker</a> &gt; 
-        <a href="#">Solution picker</a> &gt; 
-        <span style="color: #888;">Experiment details</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
 # --- Title and always-shown instructions ---
 st.markdown(
     """
-    # Paper Annotation
-    <span style="font-size:20px"><b>Coffee break : Confirm your selections</b></span>
+    <div style="margin-top: -75px;">
+        <h1 style="font-size: 2.2rem; margin-bottom: 0.5rem;">Paper Annotation</h1>
+        <span style="font-size:20px"><b>Coffee break : Confirm your selections</b></span>
+    </div>
     """,
     unsafe_allow_html=True,
 )
@@ -67,7 +57,7 @@ st.markdown(
 if confirm_page == 1:
     st.markdown(
         """
-        <div style="font-size:15px; margin-top: 10px;">
+        <div style="font-size:15px; margin-top: 10px; margin-bottom: 25px;">
         In the previous steps you identified all PI and non-PI experiments and the solutions used in the paper. Take a moment to review your selections below before you move on to the next two steps: collect details on the identified PI experiments and PI solution composition.<br>
         You also have the ability to add alternative names typically used for these experiments and solutions in the scientific literature.
         </div>
@@ -77,7 +67,7 @@ if confirm_page == 1:
 elif confirm_page == 2:
     st.markdown(
         """
-        <div style="font-size:15px; margin-top: 10px;">
+        <div style="font-size:15px; margin-top: 10px; margin-bottom: 25px;">
         For each of the PI solutions that you identified in the second step, find their detailed composition in the text after selecting the right button for the type of chemical. If the composition of a solution used in the experiments is not described in detail but instead is offered as a reference to previous work, then select that reference (tab "References") when the corresponding button pressed.
         </div>
         """,
@@ -86,7 +76,7 @@ elif confirm_page == 2:
 elif confirm_page == 3:
     st.markdown(
         """
-        <div style="font-size:15px; margin-top: 10px;">
+        <div style="font-size:15px; margin-top: 10px; margin-bottom: 25px;">
         For each of the PI solutions that you identified in the second step, find their detailed composition in the text after selecting the right button for the type of chemical. If the composition of a solution used in the experiments is not described in detail but instead is offered as a reference to previous work, then select that reference (tab "References") when the corresponding button pressed.
         </div>
         """,
@@ -102,7 +92,6 @@ if confirm_page == 1:
     # Editable table for experiments and solutions
     exp_df = pd.DataFrame([
         {
-            "": "○",
             "Experiment name": "Immunoprecipitation",
             "Alternative Experiment Name": "",
             "Experiment Type": "PI",
@@ -111,7 +100,6 @@ if confirm_page == 1:
             "Solution Type": "PI"
         },
         {
-            "": "○",
             "Experiment name": "Immunoprecipitation",
             "Alternative Experiment Name": "",
             "Experiment Type": "PI",
@@ -120,7 +108,6 @@ if confirm_page == 1:
             "Solution Type": "PI"
         },
         {
-            "": "○",
             "Experiment name": "MS screen",
             "Alternative Experiment Name": "Protein Mass spectrometry",
             "Experiment Type": "non-PI",
@@ -155,7 +142,6 @@ elif confirm_page == 2:
 
     bait_df = pd.DataFrame([
         {
-            "": "○",
             "Bait type 1": "Protein",
             "Bait type 2": "Experimental",
             "Name": "ORF2p",
@@ -177,7 +163,6 @@ elif confirm_page == 2:
 
     interactor_df = pd.DataFrame([
         {
-            "": "○",
             "Bait ref": 1,
             "Interactor type": "protein",
             "Name": "",
@@ -212,11 +197,9 @@ elif confirm_page == 3:
     with col1:
         st.text_input("pH", value="7.4")
     with col2:
-        st.text_input("Temperature", value="4")
-        st.markdown('<span style="position:relative; left:40px; top:-38px;">°C</span>', unsafe_allow_html=True)
+        st.text_input("Temperature (°C)", value="4", key="temperature_input")
     with col3:
         st.selectbox("Time", ["30min - 1h"], key="time_select")
-
     # Radio buttons
     st.radio(
         "Solution details",  # Non-empty label for accessibility
@@ -229,7 +212,6 @@ elif confirm_page == 3:
     # Editable table for solution details
     solution_df = pd.DataFrame([
         {
-            "": "○",
             "Chemical type": "Buffer",
             "Name": "HEPES",
             "Alternative name": "",
