@@ -1,12 +1,12 @@
 import streamlit as st
-import pandas as pd
-import json
-import os
 
 # Set page config
 st.set_page_config(initial_sidebar_state="expanded", page_title="Paper Annotation", layout="wide")
 st.set_option("client.showSidebarNavigation", False)
 
+import pandas as pd
+import json
+import os
 from streamlit_cookies_manager import CookieManager
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect

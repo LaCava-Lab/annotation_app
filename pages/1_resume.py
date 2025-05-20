@@ -6,6 +6,8 @@ from time import sleep
 from streamlit_cookies_manager import CookieManager
 from src.various import get_pmid
 from src.various import handle_redirects
+import os
+import json
 
 # Define the base directory as the parent directory of this script
 base_dir = Path(__file__).resolve().parent.parent 
@@ -82,8 +84,23 @@ if "userID" in st.session_state:
     #             st.switch_page("pages/4_question_cascade.py")
     #             import streamlit as st
 
-# paper title is Paper + extracted PMID
-paper_title = "Paper " + pmid
+# Extracting the title of paper
+JSON_FOLDER = base_dir / "Full_text_jsons"
+paper_name = pmid  # fallback
+
+for filename in os.listdir(JSON_FOLDER):
+    if filename.endswith(".json"):
+        with open(os.path.join(JSON_FOLDER, filename), "r", encoding="utf-8") as f:
+            raw = json.load(f)
+            doc = raw[0]["documents"][0]
+            front = doc["passages"][0]
+            meta = front["infons"]
+            extracted_pmid = meta.get("article-id_pmid", None)
+            if extracted_pmid == pmid:
+                paper_name = front["text"]
+                break
+
+paper_title = f"<i>{paper_name}</i>"
 protocols = "N"
 solutions = "M"
 annotated = "Q"
@@ -140,8 +157,8 @@ with col2:
         cookies.save()  # Save the updated cookies
 
         # Clear the session storage for "Paper in progress"
-        if "Paper in progress" in st.session_state:
-            del st.session_state["Paper in progress"]
+        if "paper_in_progress" in st.session_state:
+            del st.session_state["paper_in_progress"]
 
         # Redirect to the "Pick a new paper" page
         st.switch_page("pages/2_pick_paper.py")
