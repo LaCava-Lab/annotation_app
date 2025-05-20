@@ -1,4 +1,9 @@
 import streamlit as st
+
+# Hide sidebar
+st.set_page_config(initial_sidebar_state="collapsed")
+st.set_option("client.showSidebarNavigation", False)
+
 import pandas as pd
 from src.various import evaluate_userID, evaluate_email, evaluate_userID_format
 from st_pages import hide_pages
@@ -6,34 +11,41 @@ import ast
 from time import sleep
 import os
 from datetime import datetime
+from streamlit_cookies_manager import CookieManager
 
-# Hide sidebar
-st.set_page_config(initial_sidebar_state="collapsed")
+# Initialize the cookie manager
+cookies = CookieManager(
+    prefix="annotation_app_",
+)
+if not cookies.ready():
+    st.stop()
 
 # Load dataframes (local path for now)
 data_table = "AWS_S3/users_table.xlsx"
 papers_table = "AWS_S3/papers_table.xlsx"
 
-if "logged_in" in st.session_state and st.session_state.logged_in:
+# Check cookies for session state
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = cookies.get("logged_in", False)
+if "userID" not in st.session_state:
+    st.session_state["userID"] = cookies.get("userID", None)
+
+# Redirection logic
+if st.session_state.logged_in:
     try:
         users_df = pd.read_excel(data_table)
         user_row = users_df[users_df["userID"] == st.session_state["userID"]]
         temp_file_name = user_row["Paper in progress"].values[0]
 
         if not pd.isna(temp_file_name):
+            st.set_option("client.showSidebarNavigation", True)
             st.switch_page("pages/1_resume.py")
         else:
+            st.set_option("client.showSidebarNavigation", True)
             st.switch_page("pages/2_pick_paper.py")
     except Exception as e:
         st.error(f"Error loading user data: {e}")
         st.stop()
-
-st.set_option("client.showSidebarNavigation", False)
-
-# Handle first-load refresh issue
-if "has_rerun" not in st.session_state:
-    st.session_state.has_rerun = True
-    st.rerun()
 
 st.title("Welcome")
 st.text("Welcome to the Annotation App. Please enter your E-Mail and PIN to continue.")
@@ -87,11 +99,46 @@ if st.button("Log in", type="primary"):
         st.stop()
 
     if user_row.empty:
-        st.switch_page("pages/8_error_page.py")
-    else:
+        st.write("First-time user, welcome!")
         try:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            new_user = pd.DataFrame({
+                "e-mail": [email],
+                "userID": [unique_id],
+                "No.Papers": [0],
+                "Papers completed": [None],
+                "Paper in progress": [None],
+                "tmpstmp1": [today_str]
+            })
+
+            # Add the new user to the existing DataFrame
+            users_df = pd.concat([users_df, new_user], ignore_index=True)
+            # Save the updated DataFrame back to the file
+            users_df.to_excel(data_table, index=False)
+
+            # Save session state and cookies
             st.session_state.logged_in = True
             st.session_state["userID"] = unique_id
+            cookies["logged_in"] = True
+            cookies["userID"] = unique_id
+            cookies.save()
+
+            st.success("Your account has been created successfully!")
+            st.set_option("client.showSidebarNavigation", True)
+            sleep(1)
+            # Move on to pick papers
+            st.switch_page("pages/2_pick_paper.py")
+        except Exception as e:
+            st.error(f"Failed to create new user: {e}")
+    else:
+        try:
+            # Returning user, save session state and cookies
+            st.session_state.logged_in = True
+            st.session_state["userID"] = unique_id
+            cookies["logged_in"] = True
+            cookies["userID"] = unique_id
+            cookies.save()
+
             st.success("Logged in successfully!")
 
             today_str = datetime.now().strftime("%Y-%m-%d")
