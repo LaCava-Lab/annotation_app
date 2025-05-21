@@ -18,8 +18,7 @@ if not cookies.ready():
 handle_redirects(cookies)
 
 # Set this variable to 1, 2, or 3 to test different pages
-confirm_page = 3
-
+confirm_page = 2
 # Get the PMID from cookies
 pmid = get_pmid(cookies)
 
