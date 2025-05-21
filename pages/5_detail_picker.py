@@ -3,6 +3,7 @@ import pandas as pd
 import json
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
+from process_interchange import detail_picker
 
 # Set page config
 st.set_page_config(initial_sidebar_state="expanded", page_title="Paper Annotation", layout="wide")
@@ -54,13 +55,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.sidebar:
+    st.title(detail_picker["title"])
     # Use the DOI link dynamically
     doi_link = st.session_state.get("doi_link")
     if doi_link:
-        st.link_button("Go to full-text paper", doi_link)
+        st.link_button(detail_picker["sidebar"]["doi_link_true"], doi_link)
     else:
-        st.write("DOI link not available for this paper.")
-    st.title("Paper Annotation")
+        st.write(detail_picker["sidebar"]["doi_link_false"])
     TableSelect()
 
 # Functions to load paper text + labels
@@ -68,7 +69,7 @@ with st.sidebar:
 def get_tab_body(tab_name):
     df = st.session_state["paper_data"]
     tmp = df[df.section_type == tab_name]
-    return tmp['text'].str.cat(sep="\n\n") if not tmp.empty else "No content available for this section."
+    return tmp['text'].str.cat(sep="\n\n") if not tmp.empty else detail_picker["no_content_tab"]
 
 @st.cache_data
 def get_labels():

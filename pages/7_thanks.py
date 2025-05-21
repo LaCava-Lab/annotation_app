@@ -1,3 +1,4 @@
 import streamlit as st
+from process_interchange import thanks
 
-st.title("Thanks!")
+st.title(thanks["title"])

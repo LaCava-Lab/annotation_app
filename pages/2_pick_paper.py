@@ -3,14 +3,12 @@ import os
 import json
 import random
 import pandas as pd
+from process_interchange import pick_paper
 
 st.set_page_config(page_title="Pick Paper", layout="wide", initial_sidebar_state="collapsed")
-st.title("Select the paper you will annotate")
+st.title(pick_paper["title"])
 
-st.markdown("""
-Go through the list of five options we offer below and select the paper you are most comfortable with.
-If you don't like any of the five papers, click the "Refresh paper list" button for a new set.
-""")
+st.markdown(pick_paper["detail"])
 
 # Path to folder with JSON papers
 JSON_FOLDER = "Full_text_jsons"
@@ -141,7 +139,7 @@ for i, paper in enumerate(st.session_state.paper_choices):
 # Navigation buttons
 col2, col3 = st.columns([6, 6])
 with col2:
-    if st.button("Go to annotation", type="primary", key="go_button", disabled=not st.session_state.selected_option):
+    if st.button(pick_paper["buttons"][0]["text"], type="primary", key="go_button", disabled=not st.session_state.selected_option):
         # Save the selected paper's metadata in session state
         selected_paper = next(paper for paper in st.session_state.paper_choices if paper["filename"] == st.session_state.selected_option)
         st.session_state["selected_paper"] = selected_paper
@@ -158,6 +156,6 @@ with col2:
 
         # Navigate to the detail_picker page
         st.set_option("client.showSidebarNavigation", False)
-        st.switch_page("pages/5_detail_picker.py")
+        st.switch_page(pick_paper["buttons"][0]["page_link"])
 with col3:
-    st.button("Refresh paper list", type="secondary", key="refresh_button", on_click=refresh_paper_list)
+    st.button(pick_paper["buttons"][1]["text"], type="secondary", key="refresh_button", on_click=refresh_paper_list)
