@@ -1,4 +1,5 @@
 import streamlit as st
+from process_interchange import question_cascade
 import os
 import json
 import pandas as pd
@@ -109,6 +110,7 @@ doi = meta.get("article-id_doi", "")
 doi_link = f"https://doi.org/{doi}" if doi else None
 
 # Display paper metadata
+#st.title(question_cascade["title"])
 st.markdown(f"""
     <div style="margin-top: -50px;">
         <h3>You have selected to annotate the paper:</h3>

@@ -1,3 +1,5 @@
 import streamlit as st
+from process_interchange import browse_paper
 
-st.title("Browse Paper")
+st.title(browse_paper["title"])
+
