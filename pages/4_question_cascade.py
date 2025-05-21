@@ -16,7 +16,7 @@ if not cookies.ready():
 handle_redirects(cookies)
 
 JSON_FOLDER = "Full_text_jsons"
-USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
+USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
 
 # Function to load the selected paper's JSON file based on the PMID
 def load_paper_by_pmid(pmid):
