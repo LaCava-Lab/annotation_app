@@ -1,3 +1,13 @@
+from streamlit_cookies_manager import CookieManager
+import streamlit as st
+import pandas as pd
+
+# Path to folder with JSON papers
+JSON_FOLDER = "Full_text_jsons"
+
+# Path to the users table
+USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
+
 def evaluate_userID_format(userid):
     if not userid.isdigit():
         return "PIN must contain only digits."
@@ -44,3 +54,66 @@ def evaluate_email(email):
 	
 	return re.fullmatch(academic_email_pattern, email)
 
+# Function to fetch the PMID
+def get_pmid(cookies : CookieManager, redir: bool = True) -> str:
+    # Check if PMID is in session state
+    if "paper_in_progress" in st.session_state:
+        return st.session_state["paper_in_progress"]
+
+    # Check if PMID is in cookies
+    pmid_from_cookies = cookies.get("paper_in_progress")
+    if pmid_from_cookies:
+        st.session_state["paper_in_progress"] = pmid_from_cookies
+        return pmid_from_cookies
+
+    # Check the users table for the "Paper in progress" column
+    user_id = st.session_state.get("userID")
+    if user_id:
+        try:
+            users_df = pd.read_excel(USERS_TABLE_PATH)
+            user_row = users_df[users_df["userID"] == user_id]
+            if not user_row.empty:
+                pmid_from_table = user_row["Paper in progress"].values[0]
+                if pd.notna(pmid_from_table):
+                    # Ensure the value is treated as a string
+                    pmid_from_table = str(int(pmid_from_table))
+                    st.session_state["paper_in_progress"] = pmid_from_table
+                    cookies["paper_in_progress"] = pmid_from_table
+                    cookies.save()
+                    return pmid_from_table
+        except Exception as e:
+            st.error(f"Error fetching PMID from users table: {e}")
+
+    # If PMID is not found anywhere
+    if(redir):
+        st.set_option("client.showSidebarNavigation", True)
+        st.switch_page("pages/2_pick_paper.py")
+        st.stop()
+    
+    return None
+
+def get_selected_paper(cookies : CookieManager):
+    # Check if selected paper is in session state
+    if "selected_paper" in st.session_state:
+        return st.session_state["selected_paper"]
+
+    # Check if selected paper is in cookies
+    selected_paper_from_cookies = cookies.get("selected_paper")
+    if selected_paper_from_cookies:
+        st.session_state["selected_paper"] = selected_paper_from_cookies
+        return selected_paper_from_cookies
+
+    # If not found, return None
+    return None
+     
+
+def handle_redirects(cookies : CookieManager):
+    # Check cookies for session state
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = cookies.get("logged_in", False)
+    if "userID" not in st.session_state:
+        st.session_state["userID"] = cookies.get("userID", None)
+
+    if not st.session_state.logged_in:
+        st.set_option("client.showSidebarNavigation", False)
+        st.switch_page("login.py")
