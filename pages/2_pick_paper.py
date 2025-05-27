@@ -32,7 +32,7 @@ st.markdown(pick_paper["detail"])
 JSON_FOLDER = "Full_text_jsons"
 
 # Path to the users table
-USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
+USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
 
 # Load the users table
 users_df = pd.read_excel(USERS_TABLE_PATH)
