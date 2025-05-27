@@ -3,10 +3,12 @@ import os
 import json
 import random
 import pandas as pd
+from process_interchange import pick_paper
+
+st.set_page_config(page_title=pick_paper["title"], layout="wide", initial_sidebar_state="collapsed")
+st.title(pick_paper["title"])
+
 from src.various import get_pmid
-
-st.set_page_config(page_title="Pick Paper", layout="wide", initial_sidebar_state="collapsed")
-
 from streamlit_cookies_manager import CookieManager
 from src.various import handle_redirects
 
@@ -24,16 +26,7 @@ pmid = get_pmid(cookies, False)
 if(pmid):
     st.switch_page("pages/5_detail_picker.py")
 
-st.markdown("""
-    <div style="margin-top: -70px;">
-        <h1>Select the paper you will annotate</h1>
-    </div>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-Go through the list of five options we offer below and select the paper you are most comfortable with.
-If you don't like any of the five papers, click the "Refresh paper list" button for a new set.
-""")
+st.markdown(pick_paper["detail"])
 
 # Path to folder with JSON papers
 JSON_FOLDER = "Full_text_jsons"
@@ -188,7 +181,7 @@ for i, paper in enumerate(st.session_state.paper_choices):
 # Navigation buttons
 col2, col3 = st.columns([6, 6])
 with col2:
-    if st.button("Go to annotation", type="primary", key="go_button", disabled=not st.session_state.selected_option):
+    if st.button(pick_paper["buttons"][0]["text"], type="primary", key="go_button", disabled=not st.session_state.selected_option):
         # Save the selected paper's metadata in session state
         selected_paper = next(paper for paper in st.session_state.paper_choices if paper["filename"] == st.session_state.selected_option)
 
@@ -199,8 +192,7 @@ with col2:
 
         st.session_state["selected_paper"] = pmid
         cookies["selected_paper"] = pmid
-
-        # Navigate to the browse paper page
-        st.switch_page("pages/4_question_cascade.py")
+        st.switch_page(pick_paper["buttons"][0]["page_link"])
+        
 with col3:
-    st.button("Refresh paper list", type="secondary", key="refresh_button", on_click=refresh_paper_list)
+    st.button(pick_paper["buttons"][1]["text"], type="secondary", key="refresh_button", on_click=refresh_paper_list)
