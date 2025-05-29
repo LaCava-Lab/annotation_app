@@ -50,7 +50,7 @@
             "buttons": [
                 {
                     "text": "Go to annotation",
-                    "page_link": "pages/5_detail_picker.py"
+                    "page_link": "pages/4_question_cascade.py"
                 },
                 {
                     "text": "Refresh paper list"
