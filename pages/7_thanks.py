@@ -1,6 +1,7 @@
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
 from src.various import get_pmid, handle_redirects
+from process_interchange import thanks
 import pandas as pd
 import json
 import os
@@ -58,21 +59,33 @@ paper_name = get_paper_name(pmid)
 experiments_annotated = 0
 solutions_annotated = 0
 
-# Centered content
-st.markdown(
-    f"""
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; margin-top: -100px;">
-        <h1 style="text-align: center;">Thank you!</h1>
-        <div style="max-width: 600px; text-align: center;">
-            <p>You completed annotation of the paper: <b>{paper_name}</b>.</p>
-            <p>You have completed in total <b>{papers_completed}</b> papers, annotated <b>{experiments_annotated}</b> experiments, and <b>{solutions_annotated}</b> solutions!</p>
-            <p>To start annotating another paper, click the button below and have another go!</p>
-        </div>
-        <div style="margin-top: -50px;"></div>
+# ...existing code...
+
+body = thanks["body"]
+
+body_html = f"""
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; margin-top: -100px;">
+  <div style="border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 32px 32px 16px 32px; max-width: 600px; text-align: center;">
+    <h1 style="text-align: center; margin-bottom: 0.5em;">{thanks['title']}</h1>
+    <hr style="margin: 1em 0; border: none; border-top: 1px solid #e0e0e0;">
+    <p>{body['completed'].format(paper_name=paper_name)}</p>
+    <div style="margin: 1.5em 0;">
+      <span style="font-size: 1.1em;">
+        {body['stats'].format(
+            papers_completed=papers_completed,
+            experiments_annotated=experiments_annotated,
+            solutions_annotated=solutions_annotated
+        )}
+      </span>
     </div>
-    """,
-    unsafe_allow_html=True
-)
+    <hr style="margin: 1em 0; border: none; border-top: 1px solid #e0e0e0;">
+    <p style="margin-bottom: 0.5em;">{body['cta']}</p>
+  </div>
+</div>
+"""
+
+st.markdown(body_html, unsafe_allow_html=True)
+
 
 col1, col2, col3 = st.columns([3, 2, 3])
 with col2:
