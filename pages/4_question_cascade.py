@@ -1,4 +1,5 @@
 import streamlit as st
+from process_interchange import question_cascade
 import os
 import json
 import pandas as pd
@@ -16,7 +17,7 @@ if not cookies.ready():
 handle_redirects(cookies)
 
 JSON_FOLDER = "Full_text_jsons"
-USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
+USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
 
 # Function to load the selected paper's JSON file based on the PMID
 def load_paper_by_pmid(pmid):
@@ -109,6 +110,7 @@ doi = meta.get("article-id_doi", "")
 doi_link = f"https://doi.org/{doi}" if doi else None
 
 # Display paper metadata
+#st.title(question_cascade["title"])
 st.markdown(f"""
     <div style="margin-top: -50px;">
         <h3>You have selected to annotate the paper:</h3>
