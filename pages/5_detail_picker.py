@@ -96,10 +96,6 @@ def colored_card(title, subtitle, bg_color="#1f77b4", text_color="#ffffff", key=
     if key is None:
         key = str(uuid.uuid4())  # Generate unique key if none provided
 
-def colored_card(title, subtitle, bg_color="#1f77b4", text_color="#ffffff", key=None):
-    if key is None:
-        key = str(uuid.uuid4())  # Generate unique key if none provided
-
     container_id = f"card-{key}"
 
     st.markdown(f"""
