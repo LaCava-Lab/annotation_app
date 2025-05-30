@@ -424,6 +424,48 @@ elif current_label == st.session_state.links[6]["label"]:
             save()
     with col2:
         if st.button("Save & next", use_container_width=True):
+
+            # Add completed_paper to session state and cookies
+            st.session_state["completed_paper"] = pmid
+            cookies["completed_paper"] = pmid
+
+            # Clear selected_paper in cookies and session state
+            if "selected_paper" in st.session_state:
+                del st.session_state["selected_paper"]
+            
+            cookies["selected_paper"] = ""
+
+            # Clear paper in progress in cookies and session state and users table
+            if "paper_in_progress" in st.session_state:
+                del st.session_state["paper_in_progress"]
+            
+            cookies["paper_in_progress"] = ""
+            cookies.save()
+
+            # Add pmid to Papers completed list in users table
+            userID = st.session_state.get("userID")
+            if userID:
+                try:
+                    users_df = pd.read_excel(USERS_TABLE_PATH)
+                    user_row = users_df[users_df["userID"] == userID]
+                    if not user_row.empty:
+                        papers_completed = eval(user_row["Papers completed"].values[0])
+                        papers_completed.append(pmid)
+                        users_df.loc[users_df["userID"] == userID, "Papers completed"] = str(papers_completed)
+                        users_df.to_excel(USERS_TABLE_PATH, index=False)
+                except Exception as e:
+                    st.error(f"Error updating users table: {e}")
+
+            # Clear "Paper in progress" column in users table
+            users_df.loc[users_df["userID"] == userID, "Paper in progress"] = None
+            users_df.to_excel(USERS_TABLE_PATH, index=False)
+
+            # Reset navigation state after completing a paper
+            if "pages" in st.session_state:
+                del st.session_state["pages"]
+            if "current_page" in st.session_state:
+                del st.session_state["current_page"]
+
             st.switch_page("pages/7_thanks.py")
 else:
     st.title("")

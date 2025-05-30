@@ -17,8 +17,10 @@ if not cookies.ready():
 # Handle redirects if necessary
 handle_redirects(cookies)
 
-# Fetch the PMID of the paper
-pmid = get_pmid(cookies)
+# Fetch the PMID of the paper from completed_paper session state or cookies
+pmid = cookies.get("completed_paper") or st.session_state.get("completed_paper")
+if not pmid:
+    st.switch_page("pages/2_pick_paper.py")
 
 # Path to folder with JSON papers
 JSON_FOLDER = "Full_text_jsons"
@@ -59,8 +61,6 @@ paper_name = get_paper_name(pmid)
 experiments_annotated = 0
 solutions_annotated = 0
 
-# ...existing code...
-
 body = thanks["body"]
 
 body_html = f"""
@@ -90,13 +90,4 @@ st.markdown(body_html, unsafe_allow_html=True)
 col1, col2, col3 = st.columns([3, 2, 3])
 with col2:
     if st.button("Start new annotation", use_container_width=True):
-
-        if "paper_in_progress" in st.session_state:
-            del st.session_state["paper_in_progress"]
-        
-        cookies["paper_in_progress"] = ""
-        cookies.save()
-
-        users_df.loc[users_df["userID"] == current_user_id, "Paper in progress"] = None
-        users_df.to_excel(USERS_TABLE_PATH, index=False)
         st.switch_page("pages/2_pick_paper.py")
