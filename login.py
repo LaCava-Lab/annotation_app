@@ -21,8 +21,8 @@ if not cookies.ready():
     st.stop()
 
 # Load dataframes (local path for now)
-data_table = "AWS_S3/users_table.xlsx"
-papers_table = "AWS_S3/papers_table.xlsx"
+data_table = r"AWS_S3/users_table.xlsx"
+papers_table = r"AWS_S3/papers_table.xlsx"
 
 # Check cookies for session state
 if "logged_in" not in st.session_state:
