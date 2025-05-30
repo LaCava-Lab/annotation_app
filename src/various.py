@@ -6,7 +6,7 @@ import pandas as pd
 JSON_FOLDER = "Full_text_jsons"
 
 # Path to the users table
-USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
+USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
 
 def evaluate_userID_format(userid):
     if not userid.isdigit():

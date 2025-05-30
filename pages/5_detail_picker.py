@@ -11,6 +11,7 @@ import os
 from streamlit_cookies_manager import CookieManager
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
+from process_interchange import detail_picker
 from src.various import get_pmid, handle_redirects
 
 from st_components.BreadCrumbs import BreadCrumbs
@@ -27,7 +28,7 @@ handle_redirects(cookies)
 JSON_FOLDER = "Full_text_jsons"
 
 # Path to the users table
-USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
+USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
 
 
 # Function to load the selected paper's JSON file based on the PMID
@@ -95,6 +96,10 @@ def colored_card(title, subtitle, bg_color="#1f77b4", text_color="#ffffff", key=
     if key is None:
         key = str(uuid.uuid4())  # Generate unique key if none provided
 
+def colored_card(title, subtitle, bg_color="#1f77b4", text_color="#ffffff", key=None):
+    if key is None:
+        key = str(uuid.uuid4())  # Generate unique key if none provided
+
     container_id = f"card-{key}"
 
     st.markdown(f"""
@@ -103,15 +108,15 @@ def colored_card(title, subtitle, bg_color="#1f77b4", text_color="#ffffff", key=
                 padding: 1.5rem;
                 border-radius: 1.25rem;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                                color: {text_color};
+                color: {text_color};
                 font-family: 'Segoe UI', sans-serif;
                 margin: 1rem 0;
                 ">
                 <div style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.3rem;">
-                                {title}
+                    {title}
                 </div>
                 <div style="font-size: 1rem; font-weight: 400; opacity: 0.85;">
-                                {subtitle}
+                    {subtitle}
                 </div>
                 </div>
         """, unsafe_allow_html=True)
@@ -386,12 +391,13 @@ elif current_label == st.session_state.links[6]["label"]:
 else:
     st.title("")
 
+
 # Functions to load paper text + labels
 @st.cache_data
 def get_tab_body(tab_name):
     df = st.session_state["paper_data"]
     tmp = df[df.section_type == tab_name]
-    return tmp['text'].str.cat(sep="\n\n") if not tmp.empty else "No content available for this section."
+    return tmp['text'].str.cat(sep="\n\n") if not tmp.empty else detail_picker["no_content_tab"]
 
 @st.cache_data
 def get_labels():
