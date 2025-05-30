@@ -30,6 +30,8 @@ JSON_FOLDER = "Full_text_jsons"
 # Path to the users table
 USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
 
+with open("interchange.json", "r", encoding="utf-8") as f:
+    interchange = json.load(f)
 
 # Function to load the selected paper's JSON file based on the PMID
 def load_paper_by_pmid(pmid):
@@ -156,6 +158,8 @@ def save():
 
 pageSelected = BreadCrumbs(st.session_state.links,st.session_state.current_page["page"],pages=st.session_state.pages)
 
+doi_link = st.session_state.get("doi_link")
+
 # Main content
 current_label = st.session_state.current_page["page"]["label"]
 
@@ -164,8 +168,6 @@ if current_label == st.session_state.links[0]["label"]:
 elif current_label == st.session_state.links[1]["label"]:
     st.title(st.session_state.links[1]["label"])
 elif current_label == st.session_state.links[2]["label"]:
-    st.title(st.session_state.links[2]["label"])
-    # --- Coffee Break A Section ---
     # Hide sidebar with CSS
     st.markdown("""
         <style>
@@ -174,7 +176,14 @@ elif current_label == st.session_state.links[2]["label"]:
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("#### Experiment and Solution Types")
+    # Fetch Coffee Break A text from interchange.json
+    coffee_break_a = interchange["pages"]["5_detail_picker"]["coffee_break_a"]
+    st.title(interchange["pages"]["5_detail_picker"]["title"])
+    st.markdown(f"#### {coffee_break_a['title']}")
+    st.write(coffee_break_a["body"])
+
+    if doi_link:
+        st.button("Go to full-text paper", on_click=lambda: st.write(f"[Go to full-text paper]({doi_link})"))
 
     # Editable table for experiments and solutions
     exp_df = pd.DataFrame([
@@ -229,9 +238,24 @@ elif current_label == st.session_state.links[2]["label"]:
 elif current_label == st.session_state.links[3]["label"]:
     st.title(st.session_state.links[3]["label"])
 elif current_label == st.session_state.links[4]["label"]:
-    st.title(st.session_state.links[4]["label"])
+    # Hide sidebar with CSS
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] {display: none;}
+            .block-container {padding-top: 4rem;}
+        </style>
+    """, unsafe_allow_html=True)
 
-    # Dropdowns for experiment and bait selection (can be expanded as needed)
+    # Fetch Coffee Break B text from interchange.json
+    coffee_break_b = interchange["pages"]["5_detail_picker"]["coffee_break_b"]
+    st.title(interchange["pages"]["5_detail_picker"]["title"])
+    st.markdown(f"#### {coffee_break_b['title']}")
+    st.write(coffee_break_b["body"])
+
+    doi_link = st.session_state.get("doi_link")
+    if doi_link:
+        st.button("Go to full-text paper", on_click=lambda: st.write(f"[Go to full-text paper]({doi_link})"))
+
     col1, col2 = st.columns([1, 1])
     with col1:
         st.selectbox("Experiment", ["Experiment"], key="experiment_select")
@@ -309,7 +333,24 @@ elif current_label == st.session_state.links[4]["label"]:
 elif current_label == st.session_state.links[5]["label"]:
     st.title(st.session_state.links[5]["label"])
 elif current_label == st.session_state.links[6]["label"]:
-    st.title(st.session_state.links[6]["label"])
+
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] {display: none;}
+            .block-container {padding-top: 4rem;}
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Fetch Coffee Break C text from interchange.json
+    coffee_break_c = interchange["pages"]["5_detail_picker"]["coffee_break_c"]
+    st.title(interchange["pages"]["5_detail_picker"]["title"])
+    st.markdown(f"#### {coffee_break_c['title']}")
+    st.write(coffee_break_c["body"])
+
+    doi_link = st.session_state.get("doi_link")
+    if doi_link:
+        st.button("Go to full-text paper", on_click=lambda: st.write(f"[Go to full-text paper]({doi_link})"))
+
     # Dropdowns
     col1, col2 = st.columns([1, 1])
     with col1:
