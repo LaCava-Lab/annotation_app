@@ -47,7 +47,7 @@ router.post('/signup', async (req, res) => {
     res.status(201).json({ message: 'User created', UserKey: newUserKey });
 
   } catch (err) {
-    console.error('Signup error:', err); // 🔍 View full error
+    console.error('Signup error:', err); 
     res.status(500).json({ error: err.message });
   }
 });
