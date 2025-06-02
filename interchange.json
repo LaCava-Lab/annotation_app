@@ -66,10 +66,21 @@
         "5_detail_picker": {
             "title": "Paper Annotation",
             "sidebar": {
-                "doi_link_true": "Go to full-text paper",
                 "doi_link_false": "DOI link not available for this paper."
             },
-            "no_content_tab": "No content available for this section."
+            "no_content_tab": "No content available for this section.",
+            "coffee_break_a": {
+                "title": "Coffee break : Confirm your selections",
+                "body": "In the previous steps you identified all PI and non-PI experiments and the solutions used in the paper. Take a moment to review your selections below before you move on to the last two steps: collect details on the identified PI experiments and PI solution composition. You also have the ability to add alternative names typically used for these experiments and solutions in the scientific literature."
+            },
+            "coffee_break_b": {
+                "title": "Coffee break : Confirm your selections",
+                "body": "In the previous steps you identified all PI and non-PI experiments and the solutions used in the paper. Take a moment to review your selections below before you move on to the last step: collect details on the identified PI experiments and PI solution composition. You also have the ability to add alternative names typically used for these experiments and solutions in the scientific literature."
+            },
+            "coffee_break_c": {
+                "title": "Coffee break : Confirm your selections",
+                "body": "For each of the PI solutions that you identified in the second step, find their detailed composition in the text after selecting the right button for the type of chemical. If the composition of a solution used in the experiments is not described in detail but instead is offered as a reference to previous work, then select that reference (tab \"References\") with the corresponding button pressed."
+            }
         },
         "6_review_submit": {
             "title": "Review Submit"
