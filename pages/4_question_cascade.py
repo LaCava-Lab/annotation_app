@@ -138,7 +138,7 @@ st.markdown("###")
 col1, col2, col3 = st.columns([1.5, 1, 1])  # Creating three columns for centering
 with col2:
     if doi_link:
-        st.button("Go to full-text paper", on_click=lambda: st.write(f"[Go to full-text paper]({doi_link})"))
+        st.link_button("Go to full-text paper", doi_link)
     else:
         st.warning("DOI link not available for this paper.")
 

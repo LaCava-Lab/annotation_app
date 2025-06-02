@@ -183,7 +183,7 @@ elif current_label == st.session_state.links[2]["label"]:
     st.write(coffee_break_a["body"])
 
     if doi_link:
-        st.button("Go to full-text paper", on_click=lambda: st.write(f"[Go to full-text paper]({doi_link})"))
+        st.link_button("Go to full-text paper", doi_link)
 
     # Editable table for experiments and solutions
     exp_df = pd.DataFrame([
@@ -253,8 +253,9 @@ elif current_label == st.session_state.links[4]["label"]:
     st.write(coffee_break_b["body"])
 
     doi_link = st.session_state.get("doi_link")
+
     if doi_link:
-        st.button("Go to full-text paper", on_click=lambda: st.write(f"[Go to full-text paper]({doi_link})"))
+        st.link_button("Go to full-text paper", doi_link)
 
     col1, col2 = st.columns([1, 1])
     with col1:
@@ -346,10 +347,11 @@ elif current_label == st.session_state.links[6]["label"]:
     st.markdown(f"#### {coffee_break_c['title']}")
     st.write(coffee_break_c["body"])
 
+
     doi_link = st.session_state.get("doi_link")
     if doi_link:
-        st.button("Go to full-text paper", on_click=lambda: st.write(f"[Go to full-text paper]({doi_link})"))
-
+        st.link_button("Go to full-text paper", doi_link)
+        
     # Dropdowns
     col1, col2 = st.columns([1, 1])
     with col1:
