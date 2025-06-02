@@ -20,4 +20,4 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Start Streamlit or your app (adjust as needed)
-CMD ["streamlit", "run", "app.py", "--server.port=$PORT", "--server.enableCORS=false"]
+CMD streamlit run app.py --server.port=$PORT --server.enableCORS=false
