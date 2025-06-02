@@ -3,8 +3,7 @@ from streamlit_cookies_manager import CookieManager
 from src.various import get_pmid, handle_redirects
 from process_interchange import thanks
 import pandas as pd
-import json
-import os
+from src.database import get_paper_metadata_by_pmid
 
 # Set page configuration
 st.set_page_config(page_title="Thank You", layout="wide", initial_sidebar_state="collapsed")
@@ -21,9 +20,6 @@ handle_redirects(cookies)
 pmid = cookies.get("completed_paper") or st.session_state.get("completed_paper")
 if not pmid:
     st.switch_page("pages/2_pick_paper.py")
-
-# Path to folder with JSON papers
-JSON_FOLDER = "Full_text_jsons"
 
 # Path to the users table
 USERS_TABLE_PATH =  r"AWS_S3/users_table.xlsx" 
@@ -42,20 +38,9 @@ if current_user_id:
 else:
     papers_completed = 0
 
-# Load the paper metadata to get the paper name
-def get_paper_name(pmid):
-    for filename in os.listdir(JSON_FOLDER):
-        if filename.endswith(".json"):
-            with open(os.path.join(JSON_FOLDER, filename), "r", encoding="utf-8") as f:
-                raw = json.load(f)
-                doc = raw[0]["documents"][0]
-                front = doc["passages"][0]  # front matter
-                meta = front["infons"]
-                if meta.get("article-id_pmid") == pmid:
-                    return front["text"]  # Return the paper title
-    return None
-
-paper_name = get_paper_name(pmid)
+# Load the paper metadata to get the paper title using the new function
+paper_meta = get_paper_metadata_by_pmid(pmid, "Data_folder/Papers.csv")
+paper_name = paper_meta["title"] if paper_meta else "Unknown Paper"
 
 # Set experiments and solutions annotated to 0 for now
 experiments_annotated = 0
@@ -85,7 +70,6 @@ body_html = f"""
 """
 
 st.markdown(body_html, unsafe_allow_html=True)
-
 
 col1, col2, col3 = st.columns([3, 2, 3])
 with col2:
