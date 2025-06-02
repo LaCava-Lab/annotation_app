@@ -6,40 +6,79 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 
-function createToken(userID) {
-  return jwt.sign({ userID }, JWT_SECRET, { expiresIn: '1d' });
+function createToken(userKey) {
+  return jwt.sign({ userKey }, JWT_SECRET, { expiresIn: '1d' });
+}
+
+async function generateUserKey() {
+  const lastUser = await User.findOne({
+    order: [['UserKey', 'DESC']]
+  });
+
+  if (!lastUser || !lastUser.UserKey) return 'U0000';
+
+  const lastNumber = parseInt(lastUser.UserKey.slice(1), 10);
+  const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
+  return `U${nextNumber}`;
 }
 
 router.post('/signup', async (req, res) => {
-  const { email, password, userID } = req.body;
-  if (!email || !password || !userID) return res.status(400).json({ error: 'Missing fields' });
+  const { UserEmail, UserPIN } = req.body;
+  if (!UserEmail || !UserPIN) return res.status(400).json({ error: 'Missing fields' });
 
-  const existing = await User.findOne({ where: { email } });
-  if (existing) return res.status(400).json({ error: 'Email already registered' });
+  try {
+    const existing = await User.findOne({ where: { UserEmail } });
+    if (existing) return res.status(400).json({ error: 'Email already registered' });
 
-  const hash = await bcrypt.hash(password, 10);
-  await User.create({ email, password: hash, userID });
+    const hashedPin = await bcrypt.hash(UserPIN.toString(), 10);
+    const newUserKey = await generateUserKey();
 
-  res.status(201).json({ message: 'User created' });
+    await User.create({
+      UserEmail,
+      UserPIN: hashedPin,
+      UserKey: newUserKey,
+      AbandonLimit: false,
+      AbandonedPMIDs: [],
+      CompletedPMIDs: [],
+      AbandonedSessionID: [],
+      ClosedSessionID: []
+    });
+
+    res.status(201).json({ message: 'User created', UserKey: newUserKey });
+
+  } catch (err) {
+    console.error('Signup error:', err); // 🔍 View full error
+    res.status(500).json({ error: err.message });
+  }
 });
 
+
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ where: { email } });
-  if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+  const { UserEmail, UserPIN } = req.body;
+  const user = await User.findOne({ where: { UserEmail } });
+  if (!user) return res.status(401).json({ error: 'Invalid email or PIN' });
 
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(401).json({ error: 'Invalid email or password' });
+  const match = await bcrypt.compare(UserPIN.toString(), user.UserPIN);
+  if (!match) return res.status(401).json({ error: 'Invalid email or PIN' });
 
-  const token = createToken(user.userID);
+  const token = createToken(user.UserKey);
   res.cookie('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    maxAge: 24 * 60 * 60 * 1000 * 7
+    maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
   res.json({ message: 'Logged in' });
+});
+
+router.post('/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production'
+  });
+  res.json({ message: 'Logged out' });
 });
 
 module.exports = router;
