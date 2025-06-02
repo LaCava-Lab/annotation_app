@@ -15,9 +15,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy app files
 COPY . .
 
-# Expose port for App Platform (DigitalOcean sets $PORT)
+# Expose port for App Platform
 ENV PORT=8080
 EXPOSE 8080
 
-# Start Streamlit or your app (adjust as needed)
-CMD streamlit run login.py --server.port=$PORT
+# Run streamlit app (expand $PORT properly)
+CMD ["sh", "-c", "streamlit run login.py --server.port=$PORT --server.address=0.0.0.0"]
+
