@@ -351,7 +351,7 @@ elif current_label == st.session_state.links[6]["label"]:
     doi_link = st.session_state.get("doi_link")
     if doi_link:
         st.link_button("Go to full-text paper", doi_link)
-        
+
     # Dropdowns
     col1, col2 = st.columns([1, 1])
     with col1:
@@ -467,6 +467,8 @@ elif current_label == st.session_state.links[6]["label"]:
             if "current_page" in st.session_state:
                 del st.session_state["current_page"]
 
+            # reenable sidebar navigation
+            st.set_option("client.showSidebarNavigation", True)
             st.switch_page("pages/7_thanks.py")
 else:
     st.title("")
