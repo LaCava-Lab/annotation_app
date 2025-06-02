@@ -261,7 +261,6 @@ elif current_label == st.session_state.links[4]["label"]:
         st.selectbox("Experiment", ["Experiment"], key="experiment_select")
     with col2:
         st.selectbox("Bait 1", ["Bait 1"], key="bait_select")
-
     st.markdown("### Bait details:")
 
     bait_df = pd.DataFrame([
