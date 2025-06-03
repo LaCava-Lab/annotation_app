@@ -100,17 +100,6 @@ protocols = "N"
 solutions = "M"
 annotated = "Q"
 
-processed_text = resume["paper_in_progress"]["detail"].format(
-    paper_title=paper_title,
-    protocols=protocols,
-    solutions=solutions,
-    annotated=annotated
-)
-
-st.markdown(
-    f"<div style='border: 1px solid #444; padding: 20px; border-radius: 8px'>{processed_text}</div>",
-    unsafe_allow_html=True
-)
 # Ensure "Papers abandoned" column exists and initialize it if missing
 if "Papers abandoned" not in users_df.columns:
     users_df["Papers abandoned"] = "[]"
@@ -121,9 +110,24 @@ users_df["Papers abandoned"] = users_df["Papers abandoned"].apply(
 )
 papers_abandoned = users_df.loc[users_df["userID"] == user_id, "Papers abandoned"].values[0]
 
-# Calculate remaining re-starts
+# Calculate remaining re-starts and number of abandonments
+num_abandoned = len(papers_abandoned)
 max_abandonments = 2
-remaining_restarts = max_abandonments - len(papers_abandoned)
+remaining_restarts = max_abandonments - num_abandoned
+
+processed_text = resume["paper_in_progress"]["detail"].format(
+    paper_title=paper_title,
+    protocols=protocols,
+    solutions=solutions,
+    annotated=annotated,
+    num_abandoned=num_abandoned,
+    remaining_restarts=remaining_restarts
+) 
+
+st.markdown(
+    f"<div style='border: 1px solid #444; padding: 20px; border-radius: 8px'>{processed_text}</div>",
+    unsafe_allow_html=True
+)
 
 st.write("")
 spacer, col1, big_gap, col2, spacer2 = st.columns([1, 2, 1.5, 2, 1])

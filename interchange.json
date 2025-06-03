@@ -30,7 +30,7 @@
                 ]
             },
             "paper_in_progress": {
-                "detail": " We see that you have already started annotating <b>{paper_title}</b>. You have identified <b>{protocols}</b> protocols and <b>{solutions}</b> solutions in it, and you have already annotated in detail <b>{annotated}</b> of these solutions.<br><br>To continue annotating this paper, press <b>\"Continue annotation\"</b> below.<br><br>Even though we do not encourage it, if you have really changed your mind about the paper you chose to annotate, then press <b>\"Start new annotation\"</b>.Please note, we only allow each annotator a maximum of two \"abandoned\" papers. The \"Start new annotation\" button will be disabled once you reach this limit.",
+                "detail": "We see that you have already started annotating <b>{paper_title}</b>. You have identified <b>{protocols}</b> protocols and <b>{solutions}</b> solutions in it, and you have already annotated in detail <b>{annotated}</b> of these solutions.<br><br>To continue annotating this paper, press <b>\"Continue annotation\"</b> below.<br><br>Even though we do not encourage it, if you have really changed your mind about the paper you chose to annotate, then press <b>\"Start new annotation\"</b>. Please note, we only allow each annotator a maximum of two \"abandoned\" papers. The \"Start new annotation\" button will be disabled once you reach this limit.<br><br><b>You have abandoned <span style='color:crimson;'>{num_abandoned}</span> paper(s).<br>You currently have <span style='color:green;'>{remaining_restarts}</span> re-start(s) remaining.</b>",
                 "buttons": [
                     {
                         "text": "Continue annotation"
