@@ -144,7 +144,7 @@ if "pages" not in st.session_state:
     st.session_state.pages[0]["visited"] = 1
 
 if "cards" not in st.session_state:
-    st.session_state["cards"] = [[], [], [], []]
+    st.session_state["cards"] = [[], [], [], [],[],[],[]]
 if "active_solution_btn" not in st.session_state:
     st.session_state["active_solution_btn"] = {}
 
@@ -183,12 +183,12 @@ pageSelected = BreadCrumbs(st.session_state.links, st.session_state.current_page
 #         break
 
 def check_tag(tag):
-    if 'non-PI' in item['tag']:
+    if 'non-PI' in tag:
         return "non-PI"
     else:
         return "PI"
 
-
+doi_link = st.session_state.get("doi_link")
 def displayTextHighlighter(labels, index):
     # Main app: Tabs + Highlighting
     # Dynamically load tab names from session state
@@ -317,8 +317,6 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]
     st.markdown(f"#### {coffee_break_b['title']}")
     st.write(coffee_break_b["body"])
 
-    doi_link = st.session_state.get("doi_link")
-
     if doi_link:
         st.link_button("Go to full-text paper", doi_link)
 
@@ -421,7 +419,6 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[6]
     st.write(coffee_break_c["body"])
 
 
-    doi_link = st.session_state.get("doi_link")
     if doi_link:
         st.link_button("Go to full-text paper", doi_link)
 
@@ -570,7 +567,6 @@ def render_sidebar():
         else:
             st.title("")
 
-        doi_link = st.session_state.get("doi_link")
         if doi_link:
             st.link_button("Go to full-text paper", doi_link, use_container_width=True)
         else:
