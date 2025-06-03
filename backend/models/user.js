@@ -1,29 +1,15 @@
 module.exports = (sequelize, DataTypes) => {
   return sequelize.define('User', {
-    userID: {
-      type: DataTypes.STRING,
-      primaryKey: true
-    },
-    email: {
-      type: DataTypes.STRING
-    },
-    noPapers: {
-      type: DataTypes.STRING
-    },
-    papersCompleted: {
-      type: DataTypes.INTEGER
-    },
-    paperInProgress: {
-      type: DataTypes.STRING
-    },
-    otherInfo: {
-      type: DataTypes.TEXT
-    },
-    loginTimestamps: {
-      type: DataTypes.TEXT
-    }
-  }, {
-    tableName: 'users',
-    timestamps: false
-  });
+  UserKey: { type: DataTypes.STRING, primaryKey: true },
+  UserPIN: DataTypes.STRING,
+  UserEmail: DataTypes.STRING,
+  AbandonLimit: DataTypes.BOOLEAN,
+  CurrentPMID: DataTypes.STRING,
+  AbandonedPMIDs: DataTypes.ARRAY(DataTypes.STRING),
+  CompletedPMIDs: DataTypes.ARRAY(DataTypes.STRING),
+  OpenSessionID: DataTypes.STRING,
+  AbandonedSessionID: DataTypes.ARRAY(DataTypes.STRING),
+  ClosedSessionID: DataTypes.ARRAY(DataTypes.STRING),
+  password: DataTypes.STRING
+}, { tableName: 'users', timestamps: false });
 };
