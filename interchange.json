@@ -1,0 +1,97 @@
+{
+    "pages": {
+        "1_resume": {
+            "title": "Welcome Back!",
+            "paper_completed": {
+                "detail": "You have completed all your papers. Would you like to complete more?",
+                "buttons": [
+                    {
+                        "text": "Yes",
+                        "page_link": "pages/2_pick_paper.py"
+                    },
+                    {
+                        "text": "No",
+                        "page_link": "pages/7_thanks.py"
+                    }
+                ]
+            },
+            "paper_not_completed": {
+                "detail": "Your last paper:",
+                "warning": "No matching paper found in the papers table!",
+                "buttons": [
+                    {
+                        "text": "Continue annotating",
+                        "page_link": "pages/3_browse_paper.py"
+                    },
+                    {
+                        "text": "Choose a new paper",
+                        "page_link": "pages/2_pick_paper.py"
+                    }
+                ]
+            },
+            "paper_in_progress": {
+                "detail": "We see that you have already started annotating <b>{paper_title}</b>. You have identified <b>{protocols}</b> protocols and <b>{solutions}</b> solutions in it, and you have already annotated in detail <b>{annotated}</b> of these solutions.<br><br>To continue annotating this paper, press <b>\"Continue annotation\"</b> below.<br><br>Even though we do not encourage it, if you have really changed your mind about the paper you chose to annotate, then press <b>\"Start new annotation\"</b>. Please note, we only allow each annotator a maximum of two \"abandoned\" papers. The \"Start new annotation\" button will be disabled once you reach this limit.<br><br><b>You have abandoned <span style='color:crimson;'>{num_abandoned}</span> paper(s).<br>You currently have <span style='color:green;'>{remaining_restarts}</span> re-start(s) remaining.</b>",
+                "buttons": [
+                    {
+                        "text": "Continue annotation"
+                    },
+                    {
+                        "text": "Start new annotation"
+                    }
+                ]
+            },
+            "other": {
+                "no_temp_file_name": "pages/3_browse_paper.py"
+            }
+        },
+        "2_pick_paper": {
+            "title": "Select the paper you will annotate",
+            "detail": "Go through the list of five options we offer below and select the paper you are most comfortable with. If you don't like any of the five papers, click the \"Refresh paper list\" button for a new set.",
+            "buttons": [
+                {
+                    "text": "Go to annotation",
+                    "page_link": "pages/4_question_cascade.py"
+                },
+                {
+                    "text": "Refresh paper list"
+                }
+            ]
+        },
+        "3_browse_paper": {
+            "title": "Browse Paper"
+        },
+        "4_question_cascade": {
+            "title": "Question Cascade"
+        },
+        "5_detail_picker": {
+            "title": "Paper Annotation",
+            "sidebar": {
+                "doi_link_false": "DOI link not available for this paper."
+            },
+            "no_content_tab": "No content available for this section.",
+            "coffee_break_a": {
+                "title": "Coffee break : Confirm your selections",
+                "body": "In the previous steps you identified all PI and non-PI experiments and the solutions used in the paper. Take a moment to review your selections below before you move on to the last two steps: collect details on the identified PI experiments and PI solution composition. You also have the ability to add alternative names typically used for these experiments and solutions in the scientific literature."
+            },
+            "coffee_break_b": {
+                "title": "Coffee break : Confirm your selections",
+                "body": "In the previous steps you identified all PI and non-PI experiments and the solutions used in the paper. Take a moment to review your selections below before you move on to the last step: collect details on the identified PI experiments and PI solution composition. You also have the ability to add alternative names typically used for these experiments and solutions in the scientific literature."
+            },
+            "coffee_break_c": {
+                "title": "Coffee break : Confirm your selections",
+                "body": "For each of the PI solutions that you identified in the second step, find their detailed composition in the text after selecting the right button for the type of chemical. If the composition of a solution used in the experiments is not described in detail but instead is offered as a reference to previous work, then select that reference (tab \"References\") with the corresponding button pressed."
+            }
+        },
+        "6_review_submit": {
+            "title": "Review Submit"
+        },
+        "7_thanks": {
+            "title": "Thank you!",
+            "body": {
+                "completed": "You completed annotation of the paper: <b>{paper_name}</b>.",
+                "stats": "You have completed in total <b>{papers_completed}</b> papers, annotated <b>{experiments_annotated}</b> experiments, and <b>{solutions_annotated}</b> solutions!",
+                "cta": "To start annotating another paper, click the button below and have another go!"
+            }
+        }
+    }
+}

@@ -1,4 +1,5 @@
 import streamlit as st
+from process_interchange import question_cascade
 import os
 import json
 import pandas as pd
@@ -109,6 +110,7 @@ doi = meta.get("article-id_doi", "")
 doi_link = f"https://doi.org/{doi}" if doi else None
 
 # Display paper metadata
+#st.title(question_cascade["title"])
 st.markdown(f"""
     <div style="margin-top: -50px;">
         <h3>You have selected to annotate the paper:</h3>
@@ -136,7 +138,7 @@ st.markdown("###")
 col1, col2, col3 = st.columns([1.5, 1, 1])  # Creating three columns for centering
 with col2:
     if doi_link:
-        st.button("Go to full-text paper", on_click=lambda: st.write(f"[Go to full-text paper]({doi_link})"))
+        st.link_button("Go to full-text paper", doi_link)
     else:
         st.warning("DOI link not available for this paper.")
 

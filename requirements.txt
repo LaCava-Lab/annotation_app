@@ -2,13 +2,14 @@
 
 #general
 pandas==1.5.3 
+numpy==1.24.4
 openpyxl==3.1.2
 tenacity==9.0.0
+text-highlighter
 
 
 #Streamlit
 streamlit==1.40.1
 st-pages==0.5.0
-
-
+streamlit-cookies-manager==0.2.0
 

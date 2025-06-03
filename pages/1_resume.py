@@ -3,6 +3,7 @@ import pandas as pd
 import ast
 from pathlib import Path
 from time import sleep
+from process_interchange import resume
 from streamlit_cookies_manager import CookieManager
 from src.various import get_pmid
 from src.various import handle_redirects
@@ -16,14 +17,14 @@ base_dir = Path(__file__).resolve().parent.parent
 data_file = base_dir / "AWS_S3" / "users_table.xlsx"
 papers_table = base_dir / "AWS_S3" / "papers_table.xlsx"
 
+st.title(resume["title"])
+
 # Initialize the cookie manager
 cookies = CookieManager(prefix="annotation_app_")
 if not cookies.ready():
     st.stop()
 
 handle_redirects(cookies)
-
-st.title("Welcome Back!")
 
 # Fetch the PMID
 pmid = get_pmid(cookies)
@@ -47,42 +48,36 @@ if "userID" in st.session_state:
     papers_completed = users_df.loc[users_df["userID"] == user_id, "Papers completed"].values[0]
     no_papers = user_row["No.Papers"].values[0]
     
-    # if len(papers_completed) == no_papers:
-    #     st.write("You have completed all your papers. Would you like to complete more?")
-        
-    #     # Display "Yes" and "No" buttons horizontally
-    #     col1, col2 = st.columns(2)
-    #     with col1:
-    #         if st.button("Yes"):
-    #             st.switch_page("pages/2_pick_paper.py")
-    #     with col2:
-    #         if st.button("No"):
-    #             st.switch_page("pages/7_thanks.py")
-    # else:
-    #     if not user_row.empty:
-    #         # Get the last paper in progress
-    #         temp_file_name = user_row["Paper in progress"].values[0]
-    #         # Provide options to continue or select a new paper
-    #         if not pd.isna(temp_file_name):
-    #             paper_details = papers_df[papers_df["PMID"] == temp_file_name]
-    #             columns_to_hide = ["status_1", "user_1", "status_2", "user_2"]
-    #             paper_details_display = paper_details.drop(columns=columns_to_hide, errors="ignore")
-
-    #             if not paper_details.empty:
-    #                 # Display the details of the paper
-    #                 st.write("Your last paper:")
-    #                 st.dataframe(paper_details_display)
-    #             else:
-    #                 st.warning("No matching paper found in the papers table!")
-
-    #             if st.button("Continue annotating"):
-    #                 st.switch_page("pages/4_question_cascade.py")
-    #             elif st.button("Choose a new paper"):
-    #                 st.switch_page("pages/2_pick_paper.py")
-    #         else:
-    #             # If no temp_file_name, move on to the next paper they selected
-    #             st.switch_page("pages/4_question_cascade.py")
-    #             import streamlit as st
+    #if len(papers_completed) == no_papers:
+    #    st.write(resume["paper_completed"]["detail"])
+    #    if st.button(resume["paper_completed"]["buttons"][0]["text"]):
+    #        st.switch_page(resume["paper_completed"]["buttons"][0]["page_link"])
+    #    elif st.button(resume["paper_completed"]["buttons"][1]["text"]):
+    #        st.switch_page(resume["paper_completed"]["buttons"][1]["page_link"])
+    #else:
+    #    if not user_row.empty:
+    #        # Get the last paper in progress
+    #        temp_file_name = user_row["Paper in progress"].values[0]
+    #        # Provide options to continue or select a new paper
+    #        if not pd.isna(temp_file_name):
+    #            paper_details = papers_df[papers_df["PMID"] == temp_file_name]
+    #            columns_to_hide = ["status_1", "user_1", "status_2", "user_2"]
+    #            paper_details_display = paper_details.drop(columns=columns_to_hide, errors="ignore")
+    #
+    #            if not paper_details.empty:
+    #                # Display the details of the paper
+    #                st.write(resume["paper_not_completed"]["detail"])
+    #                st.dataframe(paper_details_display)
+    #            else:
+    #                st.warning(resume["paper_not_completed"]["warning"])
+    #
+    #            if st.button(resume["paper_not_completed"]["buttons"][0]["text"]):
+    #                st.switch_page(resume["paper_not_completed"]["buttons"][0]["page_link"])
+    #            elif st.button(resume["paper_not_completed"]["buttons"][1]["text"]):
+    #                st.switch_page(resume["paper_not_completed"]["buttons"][1]["page_link"])
+    #        else:
+    #            # If no temp_file_name, move on to the next paper they selected
+    #            st.switch_page(resume["other"]["no_temp_file_name"])
 
 # Extracting the title of paper
 JSON_FOLDER = base_dir / "Full_text_jsons"
@@ -115,32 +110,33 @@ users_df["Papers abandoned"] = users_df["Papers abandoned"].apply(
 )
 papers_abandoned = users_df.loc[users_df["userID"] == user_id, "Papers abandoned"].values[0]
 
-# Calculate remaining re-starts
+# Calculate remaining re-starts and number of abandonments
+num_abandoned = len(papers_abandoned)
 max_abandonments = 2
-remaining_restarts = max_abandonments - len(papers_abandoned)
+remaining_restarts = max_abandonments - num_abandoned
 
-# Update the note with the remaining re-starts
-st.markdown(f"""
-    <div style='border: 1px solid #444; padding: 20px; border-radius: 8px'>
-        We see that you have already started annotating <b>{paper_title}</b>. You have identified <b>{protocols}</b> protocols and <b>{solutions}</b> solutions in it, and you have already annotated in detail <b>{annotated}</b> of these solutions.
-        <br><br>
-        To continue annotating this paper, press <b>"Continue annotation"</b> below.
-        <br><br>
-        Even though we do not encourage it, if you have really changed your mind about the paper you chose to annotate, then press <b>"Start new annotation"</b>.
-        Please note, we only allow each annotator a maximum of two "abandoned" papers. The "Start new annotation" button will be disabled once you reach this limit.
-        <br><br>
-        <b>You currently have {remaining_restarts} re-starts remaining.</b>
-    </div>
-    """, unsafe_allow_html=True)
+processed_text = resume["paper_in_progress"]["detail"].format(
+    paper_title=paper_title,
+    protocols=protocols,
+    solutions=solutions,
+    annotated=annotated,
+    num_abandoned=num_abandoned,
+    remaining_restarts=remaining_restarts
+) 
+
+st.markdown(
+    f"<div style='border: 1px solid #444; padding: 20px; border-radius: 8px'>{processed_text}</div>",
+    unsafe_allow_html=True
+)
 
 st.write("")
 spacer, col1, big_gap, col2, spacer2 = st.columns([1, 2, 1.5, 2, 1])
 
 with col1:
-    if st.button("Continue annotation", type="primary"):
+    if st.button(resume["paper_in_progress"]["buttons"][0]["text"], type="primary"):
         st.switch_page("pages/5_detail_picker.py")   
 with col2:
-    if st.button("Start new annotation", disabled=(remaining_restarts <= 0)):
+    if st.button(resume["paper_in_progress"]["buttons"][1]["text"], disabled=(remaining_restarts <= 0)):
         # Add the current paper's PMID to the "Papers abandoned" list
         if pmid not in papers_abandoned:
             papers_abandoned.append(pmid)
