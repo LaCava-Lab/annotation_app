@@ -31,13 +31,17 @@ if "userID" not in st.session_state:
     st.session_state["userID"] = cookies.get("userID", None)
 
 # Redirection logic
-if st.session_state.logged_in:
-    pmid = get_pmid(cookies)
-    st.set_option("client.showSidebarNavigation", True)
-    if pmid:
-        st.switch_page("pages/1_resume.py")
-    else:
-        st.switch_page("pages/2_pick_paper.py")
+try:
+    if st.session_state.logged_in:
+        pmid = get_pmid(cookies)
+        st.set_option("client.showSidebarNavigation", True)
+        if pmid:
+            st.switch_page("pages/1_resume.py")
+        else:
+            st.switch_page("pages/2_pick_paper.py")
+except Exception as e:
+    st.error(f"Redirection error: {e}")
+    st.stop()
 
 st.title("Welcome")
 st.text("Welcome to the Annotation App. Please enter your E-Mail and PIN to continue.")
