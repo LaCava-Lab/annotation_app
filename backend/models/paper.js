@@ -1,35 +1,17 @@
 module.exports = (sequelize, DataTypes) => {
   return sequelize.define('Paper', {
-    PMID: {
-      type: DataTypes.STRING,
-      primaryKey: true
-    },
-    DOI: {
-      type: DataTypes.STRING
-    },
-    Title: {
-      type: DataTypes.TEXT
-    },
-    Authors: {
-      type: DataTypes.TEXT
-    },
-    Abstract: {
-      type: DataTypes.TEXT
-    },
-    status_1: {
-      type: DataTypes.STRING
-    },
-    user_1: {
-      type: DataTypes.STRING
-    },
-    status_2: {
-      type: DataTypes.STRING
-    },
-    user_2: {
-      type: DataTypes.STRING
-    }
-  }, {
-    tableName: 'papers',
-    timestamps: false
-  });
+  PMID: { type: DataTypes.STRING, primaryKey: true },
+  DOI_URL: DataTypes.TEXT,
+  Title: DataTypes.TEXT,
+  Authors: DataTypes.ARRAY(DataTypes.STRING),
+  Year: DataTypes.INTEGER,
+  Journal: DataTypes.STRING,
+  Volume: DataTypes.STRING,
+  Issue: DataTypes.STRING,
+  Pages: DataTypes.STRING,
+  Abstract: DataTypes.TEXT,
+  FirstParagraph: DataTypes.TEXT,
+  UsersCompleted: DataTypes.ARRAY(DataTypes.STRING),
+  UsersCurrent: DataTypes.ARRAY(DataTypes.STRING)
+}, { tableName: 'papers', timestamps: false });
 };
