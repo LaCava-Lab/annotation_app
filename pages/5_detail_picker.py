@@ -25,7 +25,7 @@ handle_redirects(cookies)
 JSON_FOLDER = "Full_text_jsons"
 
 # Path to the users table
-USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
+USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
 
 
 # Function to load the selected paper's JSON file based on the PMID
