@@ -5,7 +5,7 @@ st.set_page_config(initial_sidebar_state="collapsed")
 st.set_option("client.showSidebarNavigation", False)
 
 import pandas as pd
-from src.various import evaluate_userID, evaluate_email, evaluate_userID_format
+from src.various import evaluate_userID, evaluate_email, evaluate_userID_format, get_pmid
 from st_pages import hide_pages
 import ast
 from time import sleep
@@ -31,21 +31,17 @@ if "userID" not in st.session_state:
     st.session_state["userID"] = cookies.get("userID", None)
 
 # Redirection logic
-if st.session_state.logged_in:
-    try:
-        users_df = pd.read_excel(data_table)
-        user_row = users_df[users_df["userID"] == st.session_state["userID"]]
-        temp_file_name = user_row["Paper in progress"].values[0]
-
-        if not pd.isna(temp_file_name):
-            st.set_option("client.showSidebarNavigation", True)
+try:
+    if st.session_state.logged_in:
+        pmid = get_pmid(cookies)
+        st.set_option("client.showSidebarNavigation", True)
+        if pmid:
             st.switch_page("pages/1_resume.py")
         else:
-            st.set_option("client.showSidebarNavigation", True)
             st.switch_page("pages/2_pick_paper.py")
-    except Exception as e:
-        st.error(f"Error loading user data: {e}")
-        st.stop()
+except Exception as e:
+    st.error(f"Redirection error: {e}")
+    st.stop()
 
 st.title("Welcome")
 st.text("Welcome to the Annotation App. Please enter your E-Mail and PIN to continue.")
