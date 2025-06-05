@@ -8,6 +8,7 @@ const authenticateToken = require('./middleware/auth');
 const userRoutes = require('./routes/users');
 const paperRoutes = require('./routes/papers');
 const authRoutes = require('./routes/auth');
+const fulltextRoutes = require('./routes/fulltexts');
 const cookieParser = require('cookie-parser');
 
 app.use(express.json());
@@ -15,6 +16,7 @@ app.use(cookieParser());
 app.use('/users', userRoutes);
 app.use('/papers', authenticateToken, paperRoutes);
 app.use('/auth', authRoutes);
+app.use('/fulltext', authenticateToken, fulltextRoutes);
 db.sequelize.sync().then(() => {
   app.listen(port, () => {
     console.log('Server running on port 3000');
