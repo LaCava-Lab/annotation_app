@@ -13,6 +13,7 @@ else:
     build_dir = os.path.join(parent_dir, "frontend/build")
     _component_func = components.declare_component("TableSelect", path=build_dir)
 
-def TableSelect(key=None):
-    component_value = _component_func(key=key, default=0)
+
+def TableSelect(header,buttons, columns, key=None):
+    component_value = _component_func(header=header,buttons=buttons,columns=columns, key=key, default={})
     return component_value
