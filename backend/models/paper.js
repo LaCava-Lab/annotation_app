@@ -10,7 +10,6 @@ module.exports = (sequelize, DataTypes) => {
   Issue: DataTypes.STRING,
   Pages: DataTypes.STRING,
   Abstract: DataTypes.TEXT,
-  FirstParagraph: DataTypes.TEXT,
   UsersCompleted: DataTypes.ARRAY(DataTypes.STRING),
   UsersCurrent: DataTypes.ARRAY(DataTypes.STRING)
 }, { tableName: 'papers', timestamps: false });
