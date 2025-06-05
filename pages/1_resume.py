@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import ast
 from pathlib import Path
-from time import sleep
 from streamlit_cookies_manager import CookieManager
 from src.various import get_pmid, handle_redirects
 from src.database import get_paper_metadata_by_pmid
+from process_interchange import resume
 import os
 
 # Define the base directory as the parent directory of this script
@@ -22,7 +22,7 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-st.title("Welcome Back!")
+st.title(resume["title"])
 
 # Fetch the PMID
 pmid = get_pmid(cookies)
@@ -66,27 +66,29 @@ if "userID" in st.session_state:
     solutions = "M"
     annotated = "Q"
 
-    st.markdown(f"""
-        <div style='border: 1px solid #444; padding: 20px; border-radius: 8px'>
-            We see that you have already started annotating <b>{paper_title}</b>. You have identified <b>{protocols}</b> protocols and <b>{solutions}</b> solutions in it, and you have already annotated in detail <b>{annotated}</b> of these solutions.
-            <br><br>
-            To continue annotating this paper, press <b>"Continue annotation"</b> below.
-            <br><br>
-            Even though we do not encourage it, if you have really changed your mind about the paper you chose to annotate, then press <b>"Start new annotation"</b>.
-            Please note, we only allow each annotator a maximum of two "abandoned" papers. The "Start new annotation" button will be disabled once you reach this limit.
-            <br><br>
-            <b>You currently have {remaining_restarts} re-starts remaining.</b>
-        </div>
-        """, unsafe_allow_html=True)
+    # Use interchangeable processed text
+    processed_text = resume["paper_in_progress"]["detail"].format(
+        paper_title=paper_title,
+        protocols=protocols,
+        solutions=solutions,
+        annotated=annotated,
+        num_abandoned=len(papers_abandoned),
+        remaining_restarts=remaining_restarts
+    )
+
+    st.markdown(
+        f"<div style='border: 1px solid #444; padding: 20px; border-radius: 8px'>{processed_text}</div>",
+        unsafe_allow_html=True
+    )
 
     st.write("")
     spacer, col1, big_gap, col2, spacer2 = st.columns([1, 2, 1.5, 2, 1])
 
     with col1:
-        if st.button("Continue annotation", type="primary"):
+        if st.button(resume["paper_in_progress"]["buttons"][0]["text"], type="primary"):
             st.switch_page("pages/5_detail_picker.py")
     with col2:
-        if st.button("Start new annotation", disabled=(remaining_restarts <= 0)):
+        if st.button(resume["paper_in_progress"]["buttons"][1]["text"], disabled=(remaining_restarts <= 0)):
             # Add the current paper's PMID to the "Papers abandoned" list
             if pmid not in papers_abandoned:
                 papers_abandoned.append(pmid)
