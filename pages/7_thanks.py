@@ -40,7 +40,7 @@ else:
 
 # Load the paper metadata to get the paper title using the new function
 paper_meta = get_paper_metadata_by_pmid(pmid, "Data_folder/Papers.csv")
-paper_name = paper_meta["title"] if paper_meta else "Unknown Paper"
+paper_name = paper_meta["Title"] if paper_meta else "Unknown Paper"
 
 # Set experiments and solutions annotated to 0 for now
 experiments_annotated = 0

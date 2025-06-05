@@ -16,29 +16,32 @@ def get_userDB():
 
 def get_papersDB(csv_path="Data_folder/Papers.csv"):
     '''
-    Load papers table as a list of dicts (JSON-like)
+    Load papers table as a list of dicts (JSON-like) in the requested format.
     '''
     df = pd.read_csv(csv_path, dtype=str).fillna("")
     papers = []
     for _, row in df.iterrows():
         paper = {
-            "pmid": row["PMID"],
-            "doi": row["DOI"],
-            "title": row["Title"],
-            "authors": row["Authors"],
-            "year": row["Year"],
-            "journal": row["Journal"],
-            "volume": row["Volume"],
-            "issue": row["Issue"],
-            "pages": row["Pages"],
-            "abstract": row["Abstract"]
+            "PMID": row.get("PMID", ""),
+            "DOI_URL": f"https://doi.org/{row['DOI'].strip()}" if row.get("DOI", "").strip() else "",
+            "Title": row.get("Title", ""),
+            "Authors": [author.strip() for author in row.get("Authors", "").split(";") if author.strip()],
+            "Year": int(row.get("Year", "0")) if row.get("Year", "").isdigit() else row.get("Year", ""),
+            "Journal": row.get("Journal", ""),
+            "Volume": row.get("Volume", ""),
+            "Issue": row.get("Issue", ""),
+            "Pages": row.get("Pages", ""),
+            "Abstract": row.get("Abstract", ""),
+            "FirstParagraph": row.get("FirstParagraph", ""),
+            "UsersCompleted": [],
+            "UsersCurrent": []
         }
         papers.append(paper)
     return papers
 
 def get_paper_metadata_by_pmid(pmid, csv_path="Data_folder/Papers.csv"):
     '''
-    Return a dict with metadata for a single paper by PMID.
+    Return a dict with metadata for a single paper by PMID in the requested format.
     '''
     df = pd.read_csv(csv_path, dtype=str).fillna("")
     row = df[df["PMID"] == str(pmid)]
@@ -46,16 +49,19 @@ def get_paper_metadata_by_pmid(pmid, csv_path="Data_folder/Papers.csv"):
         return None
     row = row.iloc[0]
     return {
-        "pmid": row.get("PMID", ""),
-        "doi": row.get("DOI", ""),
-        "title": row.get("Title", ""),
-        "authors": row.get("Authors", ""),
-        "year": row.get("Year", ""),
-        "journal": row.get("Journal", ""),
-        "volume": row.get("Volume", ""),
-        "issue": row.get("Issue", ""),
-        "pages": row.get("Pages", ""),
-        "abstract": row.get("Abstract", "")
+        "PMID": row.get("PMID", ""),
+        "DOI_URL": f"https://doi.org/{row['DOI'].strip()}" if row.get("DOI", "").strip() else "",
+        "Title": row.get("Title", ""),
+        "Authors": [author.strip() for author in row.get("Authors", "").split(";") if author.strip()],
+        "Year": int(row.get("Year", "0")) if row.get("Year", "").isdigit() else row.get("Year", ""),
+        "Journal": row.get("Journal", ""),
+        "Volume": row.get("Volume", ""),
+        "Issue": row.get("Issue", ""),
+        "Pages": row.get("Pages", ""),
+        "Abstract": row.get("Abstract", ""),
+        "FirstParagraph": row.get("FirstParagraph", ""),
+        "UsersCompleted": [],
+        "UsersCurrent": []
     }
 
 def to_userDB():
@@ -82,14 +88,13 @@ def get_paper_by_pmid(pmid, csv_path="Data_folder/FullText.csv"):
     sections = []
     for _, row in paper_df.iterrows():
         sections.append({
-            "section_type": row.get('section_type', ''),
-            "subtitle": row.get('subtitle', ''),
-            "text": row.get('text', '')
+            "EntryID": row.get('EntryID', ''),
+            "PMID": row.get('filename', ''),
+            "Section": row.get('section_type', ''),
+            "Type": row.get('subtitle', ''),
+            "TextValue": row.get('text', '')
         })
-    return {
-        "pmid": str(pmid),
-        "sections": sections
-    }
+    return sections
 
 def get_doi_link_from_papers_csv(pmid, papers_csv_path="Data_folder/Papers.csv"):
     papers_df = pd.read_csv(papers_csv_path, dtype=str)

@@ -32,12 +32,11 @@ pmid = get_pmid(cookies)
 
 # Load the selected paper's data from CSV, convert to JSON, then parse
 if "paper_data" not in st.session_state:
-    paper_json = get_paper_by_pmid(pmid)
-    sections = paper_json["sections"]
+    sections = get_paper_by_pmid(pmid)  # Now returns a list of dicts
     df = pd.DataFrame(sections)
-    df = df[~df["section_type"].isin(["ISSUE"])]  # Filter out unwanted sections
+    df = df[~df["Section"].isin(["ISSUE"])]  # Filter out unwanted sections
     st.session_state["paper_data"] = df
-    st.session_state["tab_names"] = df["section_type"].unique().tolist()
+    st.session_state["tab_names"] = df["Section"].unique().tolist()
     st.session_state["doi_link"] = get_doi_link_from_papers_csv(pmid)
 
 # Sidebar style
@@ -410,8 +409,8 @@ else:
 @st.cache_data
 def get_tab_body(tab_name):
     df = st.session_state["paper_data"]
-    tmp = df[df.section_type == tab_name]
-    return tmp['text'].str.cat(sep="\n\n") if not tmp.empty else detail_picker["no_content_tab"]
+    tmp = df[df.Section == tab_name]
+    return tmp['TextValue'].str.cat(sep="\n\n") if not tmp.empty else detail_picker["no_content_tab"]
 
 @st.cache_data
 def get_labels():

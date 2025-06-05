@@ -43,15 +43,14 @@ if not paper_meta:
     st.stop()
 
 # Extract metadata fields
-title = paper_meta.get("title", "")
-authors_str = paper_meta.get("authors", "")
-year = paper_meta.get("year", "")
-journal = paper_meta.get("journal", "")
-issue = paper_meta.get("issue", "")
-volume = paper_meta.get("volume", "")
-pages = paper_meta.get("pages", "")
-doi = paper_meta.get("doi", "")
-abstract = paper_meta.get("abstract", "")
+title = paper_meta.get("Title", "")
+authors_str = ", ".join([a.strip() for a in paper_meta.get("Authors", []) if a.strip()])
+year = paper_meta.get("Year", "")
+journal = paper_meta.get("Journal", "")
+issue = paper_meta.get("Issue", "")
+volume = paper_meta.get("Volume", "")
+pages = paper_meta.get("Pages", "")
+doi = paper_meta.get("DOI_URL", "")
 
 # Dynamically construct the metadata parts
 metadata_parts = []
@@ -77,8 +76,6 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 if metadata_parts:
     st.markdown(", ".join(metadata_parts))
-if abstract:
-    st.markdown(f"<div style='margin-top:10px;'><b>Abstract:</b> {abstract}</div>", unsafe_allow_html=True)
 
 # Description
 st.markdown("###")

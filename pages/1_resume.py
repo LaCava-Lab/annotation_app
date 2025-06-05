@@ -59,7 +59,7 @@ if "userID" in st.session_state:
 
     # Get paper title
     paper_meta = get_paper_metadata_by_pmid(pmid, str(PAPERS_CSV_PATH))
-    paper_title = f"<i>{paper_meta['title']}</i>" if paper_meta and paper_meta.get("title") else f"<i>{pmid}</i>"
+    paper_title = f"<i>{paper_meta['Title']}</i>" if paper_meta and paper_meta.get("Title") else f"<i>{pmid}</i>"
 
     # Dummy values for protocols, solutions, annotated (replace with real logic if available)
     protocols = "N"

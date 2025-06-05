@@ -95,39 +95,38 @@ def select(option, key):
 for i, paper in enumerate(st.session_state.paper_choices):
     key = chr(ord("a") + i)
     label = (
-        f"**{paper['authors']}**, "
-        f"*{paper['title']}* "
-        f"({paper['year']})\n\n"
+        f"**{', '.join(paper['Authors'])}**, "
+        f"*{paper['Title']}* "
+        f"({paper['Year']})\n\n"
     )
-
     # Dynamically construct the metadata parts
     metadata_parts = []
-    if paper.get('journal', ''):
-        metadata_parts.append(f"**Journal:** {paper['journal']}")
-    if paper.get('issue', ''):
-        metadata_parts.append(f"**Issue:** {paper['issue']}")
-    if paper.get('volume', ''):
-        metadata_parts.append(f"**Volume:** {paper['volume']}")
-    if paper.get('pages', ''):
-        metadata_parts.append(f"**Pages:** {paper['pages']}")
+    if paper.get('Journal', ''):
+        metadata_parts.append(f"**Journal:** {paper['Journal']}")
+    if paper.get('Issue', ''):
+        metadata_parts.append(f"**Issue:** {paper['Issue']}")
+    if paper.get('Volume', ''):
+        metadata_parts.append(f"**Volume:** {paper['Volume']}")
+    if paper.get('Pages', ''):
+        metadata_parts.append(f"**Pages:** {paper['Pages']}")
 
     # Join metadata parts with a comma
     if metadata_parts:
         label += ", ".join(metadata_parts) + "\n\n"
 
-    if paper.get('link'):
-        label += f"[**Link**]({paper['link']})"
+    if paper.get('DOI_URL'):
+        label += f"[**Link**]({paper['DOI_URL']})"
 
     st.checkbox(label, key=key, value=st.session_state.get(key, False),
-                on_change=select, args=(paper["pmid"], key))
+                on_change=select, args=(paper["PMID"], key))
 
 # Navigation buttons
 col2, col3 = st.columns([6, 6])
 with col2:
     if st.button(pick_paper["buttons"][0]["text"], type="primary", key="go_button", disabled=not st.session_state.selected_option):
-        selected_paper = next(paper for paper in st.session_state.paper_choices if paper["pmid"] == st.session_state.selected_option)
-        st.session_state["selected_paper"] = selected_paper["pmid"]
-        cookies["selected_paper"] = selected_paper["pmid"]
+        selected_paper = next(paper for paper in st.session_state.paper_choices if paper["PMID"] == st.session_state.selected_option)
+        st.session_state["selected_paper"] = selected_paper["PMID"]
+        cookies["selected_paper"] = selected_paper["PMID"]
         st.switch_page(pick_paper["buttons"][0]["page_link"])
 
 with col3:
