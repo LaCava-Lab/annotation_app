@@ -3,20 +3,68 @@ import os
 import json
 import random
 import pandas as pd
+from process_interchange import pick_paper
 
-st.set_page_config(page_title="Pick Paper", layout="wide", initial_sidebar_state="collapsed")
-st.title("Select the paper you will annotate")
+st.set_page_config(page_title=pick_paper["title"], layout="wide", initial_sidebar_state="collapsed")
+st.title(pick_paper["title"])
 
-st.markdown("""
-Go through the list of five options we offer below and select the paper you are most comfortable with.
-If you don't like any of the five papers, click the "Refresh paper list" button for a new set.
-""")
+from src.various import get_pmid
+from streamlit_cookies_manager import CookieManager
+from src.various import handle_redirects
+
+# Initialize the cookie manager
+cookies = CookieManager(prefix="annotation_app_")
+
+if not cookies.ready():
+    st.stop()
+
+handle_redirects(cookies)
+
+pmid = get_pmid(cookies, False)
+
+# If paper already in progress then redirect to the annotation page
+if(pmid):
+    st.switch_page("pages/5_detail_picker.py")
+
+st.markdown(pick_paper["detail"])
 
 # Path to folder with JSON papers
 JSON_FOLDER = "Full_text_jsons"
 
 # Path to the users table
-USERS_TABLE_PATH = "AWS_S3\\users_table.xlsx"
+USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
+
+# Load the users table
+users_df = pd.read_excel(USERS_TABLE_PATH)
+
+# Get the current user's completed papers
+current_user_id = st.session_state.get("userID")
+if current_user_id:
+    user_row = users_df[users_df["userID"] == current_user_id]
+    if not user_row.empty:
+        papers_completed = user_row["Papers completed"].values[0]
+        if isinstance(papers_completed, str):
+            papers_completed = eval(papers_completed)  # Convert string to list
+    else:
+        papers_completed = []
+else:
+    papers_completed = []
+
+# Get the current user's abandoned papers
+if current_user_id:
+    user_row = users_df[users_df["userID"] == current_user_id]
+    if not user_row.empty:
+        # Check if "Papers abandoned" column exists
+        if "Papers abandoned" in user_row.columns:
+            papers_abandoned = user_row["Papers abandoned"].values[0]
+            if isinstance(papers_abandoned, str):
+                papers_abandoned = eval(papers_abandoned)  # Convert string to list
+        else:
+            papers_abandoned = []  # Initialize as an empty list if the column doesn't exist
+    else:
+        papers_abandoned = []
+else:
+    papers_abandoned = []
 
 # Loads the metadata from JSON files in the specified folder.
 @st.cache_data
@@ -31,6 +79,11 @@ def load_paper_metadata():
                     front = doc["passages"][0]  # front matter
                     meta = front["infons"]
                     title = front["text"]
+                    # Extract the PMID
+                    pmid = meta.get("article-id_pmid", None)
+                    if pmid and (pmid in papers_completed or pmid in papers_abandoned):
+                        print(f"Skipping {filename}: already completed or abandoned")
+                        continue  # Skip papers that are already completed or abandoned
 
                     # Extract and clean up authors
                     authors = []
@@ -61,7 +114,8 @@ def load_paper_metadata():
                         "year": meta.get("year", "?"),
                         "doi": meta.get("article-id_doi", ""),
                         "link": f"https://doi.org/{meta.get('article-id_doi', '')}",
-                        "filename": filename
+                        "filename": filename,
+                        "pmid": pmid
                     })
             except Exception as e:
                 print(f"Skipping {filename}: {e}")
@@ -72,6 +126,8 @@ all_papers = load_paper_metadata()
 # Function to refresh paper list
 def refresh_paper_list():
     num_to_select = min(5, len(all_papers))
+    if num_to_select < 5:
+        st.warning("Not enough papers available to display 5 options.")
     st.session_state.paper_choices = random.sample(all_papers, k=num_to_select)
     st.session_state.selected_option = None
     # Clear checkbox states
@@ -79,22 +135,6 @@ def refresh_paper_list():
         if k in st.session_state:
             del st.session_state[k]
 
-# Function to update the "Paper in progress" column
-def update_paper_in_progress(user_id, pmid):
-    # Load the users table
-    users_df = pd.read_excel(USERS_TABLE_PATH)
-
-    # Find the row corresponding to the user
-    user_row = users_df[users_df["userID"] == user_id]
-
-    if not user_row.empty:
-        # Update the "Paper in progress" column
-        users_df.loc[users_df["userID"] == user_id, "Paper in progress"] = pmid
-
-        # Save the updated table back to the Excel file
-        users_df.to_excel(USERS_TABLE_PATH, index=False)
-    else:
-        print(f"User with ID {user_id} not found.")
 
 # Initialize session state for paper choices
 if "paper_choices" not in st.session_state:
@@ -141,23 +181,18 @@ for i, paper in enumerate(st.session_state.paper_choices):
 # Navigation buttons
 col2, col3 = st.columns([6, 6])
 with col2:
-    if st.button("Go to annotation", type="primary", key="go_button", disabled=not st.session_state.selected_option):
+    if st.button(pick_paper["buttons"][0]["text"], type="primary", key="go_button", disabled=not st.session_state.selected_option):
         # Save the selected paper's metadata in session state
         selected_paper = next(paper for paper in st.session_state.paper_choices if paper["filename"] == st.session_state.selected_option)
-        st.session_state["selected_paper"] = selected_paper
 
         # Extract the PMID from the selected paper's JSON file
         with open(f"{JSON_FOLDER}/{selected_paper['filename']}", "r", encoding="utf-8") as f:
             raw = json.load(f)
             pmid = raw[0]["documents"][0]["passages"][0]["infons"].get("article-id_pmid", "PMID not found")
 
-        # Update the "Paper in progress" column for the current user
-        current_user_id = st.session_state.get("userID")  # Ensure userID is stored in session state
-        if current_user_id:
-            update_paper_in_progress(current_user_id, pmid)
-
-        # Navigate to the detail_picker page
-        st.set_option("client.showSidebarNavigation", False)
-        st.switch_page("pages/5_detail_picker.py")
+        st.session_state["selected_paper"] = pmid
+        cookies["selected_paper"] = pmid
+        st.switch_page(pick_paper["buttons"][0]["page_link"])
+        
 with col3:
-    st.button("Refresh paper list", type="secondary", key="refresh_button", on_click=refresh_paper_list)
+    st.button(pick_paper["buttons"][1]["text"], type="secondary", key="refresh_button", on_click=refresh_paper_list)
