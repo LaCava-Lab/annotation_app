@@ -14,5 +14,5 @@ db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 db.User = require('./user')(sequelize, Sequelize);
 db.Paper = require('./paper')(sequelize, Sequelize);
-
+db.FullText = require('./fulltext')(sequelize, Sequelize);
 module.exports = db;
