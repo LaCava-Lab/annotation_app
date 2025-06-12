@@ -44,7 +44,7 @@ def fetch_paper_by_pmid(pmid):
         st.error(f"Could not connect to backend: {e}")
         st.stop()
 
-# Function to update the "Paper in progress" in the database via backend
+# Function to update the "Paper in progress" in the database
 def update_paper_in_progress(user_email, pmid):
     token = get_token()
     try:
@@ -92,7 +92,7 @@ year = paper_meta.get("Year", "?")
 if year != "?":
     metadata_parts.append(f"**Year:** {year}")
 
-# Use the DOI/fulltext link as stored in the backend (not localhost)
+# DOI link handling
 doi_link = paper_meta.get("DOI_URL", "")
 if doi_link and not doi_link.startswith("http"):
     doi_link = f"https://doi.org/{doi_link}"

@@ -12,7 +12,6 @@ cookies = CookieManager(prefix="annotation_app_")
 if not cookies.ready():
     st.stop()
 
-# Handle redirects if necessary
 handle_redirects(cookies)
 
 BACKEND_URL = "http://localhost:3000"
@@ -71,11 +70,11 @@ def fetch_paper_info(pmid):
 user_info = fetch_user_info()
 st.write("DEBUG user_info:", user_info)
 papers_completed = len(user_info.get("CompletedPMIDs", []) or [])
-# Optionally, fetch more stats if your backend provides them
+# TO BE ADDRESSED - EXPERIMENTS AND SOLUTIONS ANNOTATED REQUIRES MORE DATA SAVED IN BACKEND
 experiments_annotated = user_info.get("ExperimentsAnnotated", 0)
 solutions_annotated = user_info.get("SolutionsAnnotated", 0)
 
-# Get the paper title from backend
+# Get the paper title
 paper_info = fetch_paper_info(pmid)
 if paper_info and "Title" in paper_info:
     paper_name = f"<i>{paper_info['Title']}</i>"

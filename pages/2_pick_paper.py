@@ -26,7 +26,6 @@ def get_token():
     return cookies.get("token") or st.session_state.get("token")
 
 def get_user_email():
-    # Adjust this if you use UserKey or UserEmail for login
     return st.session_state.get("userID")
 
 # Fetch user info from backend
@@ -99,7 +98,7 @@ def load_paper_metadata():
                     "year": paper.get("Year", "?"),
                     "doi": paper.get("DOI_URL", ""),
                     "link": paper.get("DOI_URL", ""),
-                    "filename": pmid,  # Use PMID as filename identifier
+                    "filename": pmid,
                     "pmid": pmid
                 })
             return result
@@ -163,7 +162,7 @@ for i, paper in enumerate(st.session_state.paper_choices):
     if metadata_parts:
         label += ", ".join(metadata_parts) + "\n\n"
 
-    # Always use a proper DOI link
+    # DOI Link extraction
     doi_link = paper.get("link", "")
     if doi_link and not doi_link.startswith("http"):
         doi_link = f"https://doi.org/{doi_link}"
@@ -180,7 +179,7 @@ with col2:
         # Save the selected paper's metadata in session state
         selected_paper = next(paper for paper in st.session_state.paper_choices if paper["filename"] == st.session_state.selected_option)
 
-        # Use the pmid directly (no local file access)
+        # Set selected paper in session state and cookies
         pmid = selected_paper["pmid"]
 
         st.session_state["selected_paper"] = pmid

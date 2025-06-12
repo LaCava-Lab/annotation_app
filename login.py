@@ -115,8 +115,7 @@ if st.button("Sign up", type="secondary"):
             st.error(msg)
     except Exception as e:
         st.error(f"Could not connect to backend: {e}")
-
-# Optionally, add a logout button for testing
+        
 if st.session_state.get("logged_in"):
     if st.button("Log out"):
         st.session_state.logged_in = False

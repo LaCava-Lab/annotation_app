@@ -95,8 +95,6 @@ def clear_paper_in_progress(user_email):
     except Exception as e:
         return False
 
-# --- Main logic ---
-
 user_info = fetch_user_info()
 papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
 num_abandoned = len(papers_abandoned)
@@ -114,7 +112,7 @@ if pmid:
 else:
     paper_title = "<i>No paper in progress</i>"
 
-# Dummy values for protocols/solutions/annotated (replace with real logic if needed)
+# Dummy values for protocols/solutions/annotated (REPLACE WITH ACTUAL DATA)
 protocols = "N"
 solutions = "M"
 annotated = "Q"

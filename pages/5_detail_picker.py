@@ -45,6 +45,7 @@ def load_state_from_cookies():
 
 # Load app state from cookies if present
 load_state_from_cookies()
+
 # Initialize session state
 if "links" not in st.session_state:
     st.session_state.links = [
@@ -65,7 +66,7 @@ if "pages" not in st.session_state:
 if "current_page" not in st.session_state:
     st.session_state.current_page = {"page": st.session_state.links[0], "index": 0}
 
-# Add this to initialize cards if missing
+# Initialize cards for each page
 if "cards" not in st.session_state:
     st.session_state["cards"] = [[] for _ in range(len(st.session_state.links))]
     
@@ -77,7 +78,8 @@ if not pmid:
     st.error("No paper in progress. Please pick a paper to annotate.")
     st.switch_page("pages/2_pick_paper.py")
 
-# --- Backend user progress helpers ---
+
+# Backend progress helpers
 
 def get_token():
     return cookies.get("token") or st.session_state.get("token")
@@ -163,7 +165,7 @@ def fetch_fulltext_by_pmid(pmid):
         st.error(f"Could not connect to backend: {e}")
         st.stop()
 
-# Load the selected paper's fulltext from backend
+# Load the selected paper's fulltext
 if "paper_data" not in st.session_state:
     raw = fetch_fulltext_by_pmid(pmid)
     df = pd.DataFrame(raw)
