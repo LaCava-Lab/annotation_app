@@ -2,12 +2,12 @@ import streamlit as st
 import uuid
 import pandas as pd
 import json
-import requests
 from streamlit_cookies_manager import CookieManager
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
 from process_interchange import detail_picker
-from src.various import get_pmid, handle_redirects
+from src.various import get_pmid, handle_redirects, add_completed_paper, clear_paper_in_progress, save_state_to_cookies, load_state_from_cookies, check_tag, fetch_fulltext_by_pmid
+
 from st_components.BreadCrumbs import BreadCrumbs
 
 # Set page config
@@ -21,30 +21,8 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-BACKEND_URL = "http://localhost:3000"
-
-with open("interchange.json", "r", encoding="utf-8") as f:
-    interchange = json.load(f)
-
-# State persistence helpers
-def save_state_to_cookies():
-    cookies["cards"] = json.dumps(st.session_state.get("cards", []))
-    cookies["current_page"] = json.dumps(st.session_state.get("current_page", {}))
-    cookies["pages"] = json.dumps(st.session_state.get("pages", []))
-    cookies["active_solution_btn"] = json.dumps(st.session_state.get("active_solution_btn", {}))
-
-def load_state_from_cookies():
-    if "cards" not in st.session_state and "cards" in cookies and cookies["cards"]:
-        st.session_state["cards"] = json.loads(cookies["cards"])
-    if "current_page" not in st.session_state and "current_page" in cookies and cookies["current_page"]:
-        st.session_state["current_page"] = json.loads(cookies["current_page"])
-    if "pages" not in st.session_state and "pages" in cookies and cookies["pages"]:
-        st.session_state["pages"] = json.loads(cookies["pages"])
-    if "active_solution_btn" not in st.session_state and "active_solution_btn" in cookies and cookies["active_solution_btn"]:
-        st.session_state["active_solution_btn"] = json.loads(cookies["active_solution_btn"])
-
 # Load app state from cookies if present
-load_state_from_cookies()
+load_state_from_cookies(cookies)
 
 # Initialize session state
 if "links" not in st.session_state:
@@ -79,95 +57,9 @@ if not pmid:
     st.switch_page("pages/2_pick_paper.py")
 
 
-# Backend progress helpers
-
-def get_token():
-    return cookies.get("token") or st.session_state.get("token")
-
-def update_paper_in_progress(user_email, pmid):
-    token = get_token()
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/users/set_current_pmid",
-            json={"email": user_email, "pmid": pmid},
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            st.session_state["paper_in_progress"] = pmid
-            cookies["paper_in_progress"] = pmid
-            cookies.save()
-        else:
-            st.error("Failed to update paper in progress in the database.")
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-
-def add_completed_paper(user_email, pmid):
-    token = get_token()
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/users/add_completed",
-            json={"email": user_email, "pmid": pmid},
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code != 200:
-            st.error("Failed to add completed paper in the database.")
-            return False
-        return True
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-        return False
-
-def clear_paper_in_progress(user_email):
-    token = get_token()
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/users/set_current_pmid",
-            json={"email": user_email, "pmid": None},
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            st.session_state["paper_in_progress"] = None
-            cookies["paper_in_progress"] = ""
-            cookies.save()
-            return True
-        else:
-            st.error("Failed to clear paper in progress in the database.")
-            return False
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-        return False
-
-def fetch_fulltext_by_pmid(pmid):
-    token = get_token()
-    if not token:
-        st.error("Not authenticated. Please log in again.")
-        st.stop()
-    try:
-        resp = requests.get(
-            f"{BACKEND_URL}/fulltext",
-            params={"filename": str(pmid)},
-            cookies={"token": token},
-            timeout=15
-        )
-        if resp.status_code == 200:
-            results = resp.json()
-            if not results or not isinstance(results, list):
-                st.error("No fulltext found for this paper.")
-                st.stop()
-            return results
-        else:
-            st.error(f"Failed to fetch fulltext: {resp.text}")
-            st.stop()
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-        st.stop()
-
 # Load the selected paper's fulltext
 if "paper_data" not in st.session_state:
-    raw = fetch_fulltext_by_pmid(pmid)
+    raw = fetch_fulltext_by_pmid(pmid, cookies)
     df = pd.DataFrame(raw)
     if df.empty:
         st.error("No fulltext data available for this paper.")
@@ -240,7 +132,7 @@ def changePage(index):
         "index": index
     }
     st.session_state.pages[index]["visited"] = 1
-    save_state_to_cookies()
+    save_state_to_cookies(cookies)
     st.rerun()
 
 def next():
@@ -252,15 +144,9 @@ def prev():
         changePage(st.session_state.current_page["index"] - 1)
 
 def save():
-    save_state_to_cookies()
+    save_state_to_cookies(cookies)
 
 pageSelected = BreadCrumbs(st.session_state.links, st.session_state.current_page["page"], pages=st.session_state.pages)
-
-def check_tag(tag):
-    if 'non-PI' in tag:
-        return "non-PI"
-    else:
-        return "PI"
 
 doi_link = st.session_state.get("doi_link")
 
@@ -282,7 +168,7 @@ def displayTextHighlighter(labels, index):
             )
             results.append(result)
     st.session_state["cards"][st.session_state.current_page["index"]] = results
-    save_state_to_cookies()
+    save_state_to_cookies(cookies)
     return results
 
 if st.session_state.current_page["page"]["label"] == st.session_state.links[0]["label"]:
@@ -305,8 +191,8 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]
 </style>
         """, unsafe_allow_html=True)
 
-    coffee_break_a = interchange["pages"]["5_detail_picker"]["coffee_break_a"]
-    st.title(interchange["pages"]["5_detail_picker"]["title"])
+    coffee_break_a = detail_picker["coffee_break_a"]
+    st.title(detail_picker["title"])
     st.markdown(f"#### {coffee_break_a['title']}")
     st.write(coffee_break_a["body"])
 
@@ -375,7 +261,7 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]
         if st.button("Save & next", use_container_width=True):
             save()
             next()
-    save_state_to_cookies()
+    save_state_to_cookies(cookies)
 
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[3]["label"]:
     st.title(st.session_state.links[3]["label"])
@@ -391,8 +277,8 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]
 </style>
         """, unsafe_allow_html=True)
 
-    coffee_break_b = interchange["pages"]["5_detail_picker"]["coffee_break_b"]
-    st.title(interchange["pages"]["5_detail_picker"]["title"])
+    coffee_break_b = detail_picker["coffee_break_b"]
+    st.title(detail_picker["title"])
     st.markdown(f"#### {coffee_break_b['title']}")
     st.write(coffee_break_b["body"])
 
@@ -470,7 +356,7 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]
         if st.button("Save & next", use_container_width=True):
             save()
             next()
-    save_state_to_cookies()
+    save_state_to_cookies(cookies)
 
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[5]["label"]:
     st.title(st.session_state.links[5]["label"])
@@ -491,8 +377,8 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[6]
 </style>
         """, unsafe_allow_html=True)
 
-    coffee_break_c = interchange["pages"]["5_detail_picker"]["coffee_break_c"]
-    st.title(interchange["pages"]["5_detail_picker"]["title"])
+    coffee_break_c = detail_picker["coffee_break_c"]
+    st.title(detail_picker["title"])
     st.markdown(f"#### {coffee_break_c['title']}")
     st.write(coffee_break_c["body"])
 
@@ -584,8 +470,8 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[6]
             user_email = st.session_state.get("userID")
             if user_email:
                 # Only clear after add_completed_paper succeeds
-                if add_completed_paper(user_email, pmid):
-                    clear_paper_in_progress(user_email)
+                if add_completed_paper(user_email, pmid, cookies):
+                    clear_paper_in_progress(user_email, cookies)
 
             if "pages" in st.session_state:
                 del st.session_state["pages"]

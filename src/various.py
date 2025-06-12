@@ -1,12 +1,132 @@
 from streamlit_cookies_manager import CookieManager
 import streamlit as st
 import pandas as pd
+import requests
+import re
+import json
+import random
 
 # Path to folder with JSON papers
 JSON_FOLDER = "Full_text_jsons"
 
 # Path to the users table
 USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
+
+BACKEND_URL = "http://localhost:3000"
+
+def get_token(cookies=None):
+    if cookies:
+        return cookies.get("token") or st.session_state.get("token")
+    return st.session_state.get("token")
+
+def get_user_email():
+    return st.session_state.get("userID")
+
+def fetch_user_info(cookies=None):
+    user_email = get_user_email()
+    token = get_token(cookies)
+    if not user_email or not token:
+        st.error("Not authenticated. Please log in again.")
+        st.stop()
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/users/me",
+            params={"email": user_email},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            st.error("Could not fetch user info from backend.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
+
+def fetch_paper_info(pmid, cookies=None):
+    token = get_token(cookies)
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/papers/{pmid}",
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            return None
+    except Exception as e:
+        return None
+
+def abandon_paper(user_email, pmid, cookies=None):
+    token = get_token(cookies)
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/users/add_abandoned",
+            json={"email": user_email, "pmid": pmid},
+            cookies={"token": token},
+            timeout=10
+        )
+        return resp.status_code == 200
+    except Exception as e:
+        return False
+
+def clear_paper_in_progress(user_email, cookies=None):
+    token = get_token(cookies)
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/users/set_current_pmid",
+            json={"email": user_email, "pmid": None},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            st.session_state["paper_in_progress"] = None
+            cookies["paper_in_progress"] = ""
+            cookies.save()
+            return True
+        else:
+            st.error("Failed to clear paper in progress in the database.")
+            return False
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        return False
+
+def add_completed_paper(user_email, pmid, cookies=None):
+    token = get_token(cookies)
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/users/add_completed",
+            json={"email": user_email, "pmid": pmid},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code != 200:
+            st.error("Failed to add completed paper in the database.")
+            return False
+        return True
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        return False
+
+def update_paper_in_progress(user_email, pmid, cookies):
+    token = get_token(cookies)
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/users/set_current_pmid",
+            json={"email": user_email, "pmid": pmid},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            st.session_state["paper_in_progress"] = pmid
+            cookies["paper_in_progress"] = pmid
+            cookies.save()
+        else:
+            st.error("Failed to update paper in progress in the database.")
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
 
 def evaluate_userID_format(userid):
     if not userid.isdigit():
@@ -55,8 +175,6 @@ def evaluate_email(email):
 	return re.fullmatch(academic_email_pattern, email)
 
 def get_pmid(cookies: CookieManager, redir: bool = True) -> str:
-    import requests
-
     # Check if PMID is in session state
     if "paper_in_progress" in st.session_state:
         return st.session_state["paper_in_progress"]
@@ -125,3 +243,110 @@ def handle_redirects(cookies : CookieManager):
     if not st.session_state.logged_in:
         st.set_option("client.showSidebarNavigation", False)
         st.switch_page("login.py")
+
+def save_state_to_cookies(cookies):
+    cookies["cards"] = json.dumps(st.session_state.get("cards", []))
+    cookies["current_page"] = json.dumps(st.session_state.get("current_page", {}))
+    cookies["pages"] = json.dumps(st.session_state.get("pages", []))
+    cookies["active_solution_btn"] = json.dumps(st.session_state.get("active_solution_btn", {}))
+
+def load_state_from_cookies(cookies):
+    if "cards" not in st.session_state and "cards" in cookies and cookies["cards"]:
+        st.session_state["cards"] = json.loads(cookies["cards"])
+    if "current_page" not in st.session_state and "current_page" in cookies and cookies["current_page"]:
+        st.session_state["current_page"] = json.loads(cookies["current_page"])
+    if "pages" not in st.session_state and "pages" in cookies and cookies["pages"]:
+        st.session_state["pages"] = json.loads(cookies["pages"])
+    if "active_solution_btn" not in st.session_state and "active_solution_btn" in cookies and cookies["active_solution_btn"]:
+        st.session_state["active_solution_btn"] = json.loads(cookies["active_solution_btn"])
+
+def check_tag(tag):
+    if 'non-PI' in tag:
+        return "non-PI"
+    else:
+        return "PI"
+
+def load_paper_metadata(token, papers_completed, papers_abandoned):
+    import requests
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/papers",
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            papers = resp.json()
+            result = []
+            for paper in papers:
+                pmid = paper.get("PMID")
+                if pmid and (pmid in papers_completed or pmid in papers_abandoned):
+                    continue  # Skip papers that are already completed or abandoned
+                authors = paper.get("Authors", [])
+                if isinstance(authors, list):
+                    authors_str = ", ".join(authors)
+                else:
+                    authors_str = str(authors)
+                fpage = paper.get("FPage", "N/A")
+                lpage = paper.get("LPage", "N/A")
+                pages = f"{fpage}-{lpage}" if fpage != "N/A" and lpage != "N/A" else "N/A"
+                result.append({
+                    "title": paper.get("Title", ""),
+                    "authors": authors_str,
+                    "volume": paper.get("Volume", "?"),
+                    "issue": paper.get("Issue", "?"),
+                    "pages": pages,
+                    "year": paper.get("Year", "?"),
+                    "doi": paper.get("DOI_URL", ""),
+                    "link": paper.get("DOI_URL", ""),
+                    "filename": pmid,
+                    "pmid": pmid
+                })
+            return result
+        else:
+            st.error(f"Failed to fetch papers: {resp.text}")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
+
+def fetch_paper_by_pmid(pmid, token):
+    import requests
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/papers",
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            papers = resp.json()
+            for paper in papers:
+                if str(paper.get("PMID")) == str(pmid):
+                    return paper
+            st.error(f"Paper with PMID {pmid} not found.")
+            st.stop()
+        else:
+            st.error(f"Failed to fetch papers: {resp.text}")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
+
+def fetch_fulltext_by_pmid(pmid, cookies=None):
+    """
+    Fetch the full text for a given PMID from the backend.
+    Returns the full text JSON or None if not found.
+    """
+    token = get_token(cookies)
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/fulltext",
+            params={"filename": pmid},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            return None
+    except Exception as e:
+        return None

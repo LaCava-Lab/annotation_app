@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
-from src.various import handle_redirects
+from src.various import handle_redirects, fetch_user_info, fetch_paper_info
 from process_interchange import thanks
 import requests
 
@@ -14,68 +14,20 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-BACKEND_URL = "http://localhost:3000"
-
 # Fetch the PMID of the paper from completed_paper session state or cookies
 pmid = cookies.get("completed_paper") or st.session_state.get("completed_paper")
 if not pmid:
     st.switch_page("pages/2_pick_paper.py")
 
-def get_token():
-    return cookies.get("token") or st.session_state.get("token")
-
-def get_user_email():
-    return st.session_state.get("userID")
-
-# Fetch user info from backend
-def fetch_user_info():
-    user_email = get_user_email()
-    token = get_token()
-    if not user_email or not token:
-        st.error("Not authenticated. Please log in again.")
-        st.stop()
-    try:
-        resp = requests.get(
-            f"{BACKEND_URL}/users/me",
-            params={"email": user_email},
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            return resp.json()
-        else:
-            st.error("Could not fetch user info from backend.")
-            st.stop()
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-        st.stop()
-
-# Fetch paper info from backend
-def fetch_paper_info(pmid):
-    token = get_token()
-    try:
-        resp = requests.get(
-            f"{BACKEND_URL}/papers/{pmid}",
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            return resp.json()
-        else:
-            return None
-    except Exception as e:
-        return None
-
 # Get user info and stats
-user_info = fetch_user_info()
-st.write("DEBUG user_info:", user_info)
+user_info = fetch_user_info(cookies)
 papers_completed = len(user_info.get("CompletedPMIDs", []) or [])
 # TO BE ADDRESSED - EXPERIMENTS AND SOLUTIONS ANNOTATED REQUIRES MORE DATA SAVED IN BACKEND
 experiments_annotated = user_info.get("ExperimentsAnnotated", 0)
 solutions_annotated = user_info.get("SolutionsAnnotated", 0)
 
 # Get the paper title
-paper_info = fetch_paper_info(pmid)
+paper_info = fetch_paper_info(pmid, cookies)
 if paper_info and "Title" in paper_info:
     paper_name = f"<i>{paper_info['Title']}</i>"
 else:
