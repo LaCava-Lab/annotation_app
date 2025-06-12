@@ -1,7 +1,8 @@
 import streamlit as st
 import random
+import requests
 from process_interchange import pick_paper
-from src.various import get_token, get_pmid, fetch_user_info, handle_redirects, load_paper_metadata
+from src.various import get_pmid, handle_redirects
 from streamlit_cookies_manager import CookieManager
 
 st.set_page_config(page_title=pick_paper["title"], layout="wide", initial_sidebar_state="collapsed")
@@ -14,20 +15,103 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-# Fetch user info from backend
-user_info = fetch_user_info(cookies)
-# Get pmid to see if a paper is in progress
-pmid = get_pmid(cookies)
+BACKEND_URL = "http://localhost:3000"
+
+pmid = get_pmid(cookies, redir=False)
 if pmid:
     st.switch_page("pages/1_resume.py")
+    st.stop()
+    
+def get_token():
+    return cookies.get("token") or st.session_state.get("token")
 
+def get_user_email():
+    return st.session_state.get("userID")
+
+# Fetch user info from backend
+def fetch_user_info():
+    user_email = get_user_email()
+    token = get_token()
+    if not user_email or not token:
+        st.error("Not authenticated. Please log in again.")
+        st.stop()
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/users/me",
+            params={"email": user_email},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            st.error("Could not fetch user info from backend.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
+
+# Fetch completed and abandoned PMIDs for the current user
+user_info = fetch_user_info()
 papers_completed = user_info.get("CompletedPMIDs", []) or []
 papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
 
-token = get_token(cookies)
-all_papers = load_paper_metadata(token, papers_completed, papers_abandoned)
+# Loads the metadata from backend via HTTP
+@st.cache_data
+def load_paper_metadata():
+    token = get_token()
+    if not token:
+        st.error("Not authenticated. Please log in again.")
+        st.stop()
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/papers",
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            papers = resp.json()
+            result = []
+            for paper in papers:
+                pmid = paper.get("PMID")
+                if pmid and (pmid in papers_completed or pmid in papers_abandoned):
+                    continue  # Skip papers that are already completed or abandoned
+
+                # Authors: handle as string or list
+                authors = paper.get("Authors", [])
+                if isinstance(authors, list):
+                    authors_str = ", ".join(authors)
+                else:
+                    authors_str = str(authors)
+
+                # Pages
+                fpage = paper.get("FPage", "N/A")
+                lpage = paper.get("LPage", "N/A")
+                pages = f"{fpage}-{lpage}" if fpage != "N/A" and lpage != "N/A" else "N/A"
+
+                result.append({
+                    "title": paper.get("Title", ""),
+                    "authors": authors_str,
+                    "volume": paper.get("Volume", "?"),
+                    "issue": paper.get("Issue", "?"),
+                    "pages": pages,
+                    "year": paper.get("Year", "?"),
+                    "doi": paper.get("DOI_URL", ""),
+                    "link": paper.get("DOI_URL", ""),
+                    "filename": pmid,
+                    "pmid": pmid
+                })
+            return result
+        else:
+            st.error(f"Failed to fetch papers: {resp.text}")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
 
 st.markdown(pick_paper["detail"])
+
+all_papers = load_paper_metadata()
 
 # Function to refresh paper list
 def refresh_paper_list():
