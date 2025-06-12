@@ -1,125 +1,116 @@
 import streamlit as st
-import os
-import json
 import random
-import pandas as pd
+import requests
 from process_interchange import pick_paper
+from src.various import get_pmid, handle_redirects
+from streamlit_cookies_manager import CookieManager
 
 st.set_page_config(page_title=pick_paper["title"], layout="wide", initial_sidebar_state="collapsed")
 st.title(pick_paper["title"])
 
-from src.various import get_pmid
-from streamlit_cookies_manager import CookieManager
-from src.various import handle_redirects
-
 # Initialize the cookie manager
 cookies = CookieManager(prefix="annotation_app_")
-
 if not cookies.ready():
     st.stop()
 
 handle_redirects(cookies)
 
-pmid = get_pmid(cookies, False)
+BACKEND_URL = "http://localhost:3000"
 
-# If paper already in progress then redirect to the annotation page
-if(pmid):
-    st.switch_page("pages/5_detail_picker.py")
+pmid = get_pmid(cookies, redir=False)
+if pmid:
+    st.switch_page("pages/1_resume.py")
+    st.stop()
+    
+def get_token():
+    return cookies.get("token") or st.session_state.get("token")
 
-st.markdown(pick_paper["detail"])
+def get_user_email():
+    # Adjust this if you use UserKey or UserEmail for login
+    return st.session_state.get("userID")
 
-# Path to folder with JSON papers
-JSON_FOLDER = "Full_text_jsons"
-
-# Path to the users table
-USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
-
-# Load the users table
-users_df = pd.read_excel(USERS_TABLE_PATH)
-
-# Get the current user's completed papers
-current_user_id = st.session_state.get("userID")
-if current_user_id:
-    user_row = users_df[users_df["userID"] == current_user_id]
-    if not user_row.empty:
-        papers_completed = user_row["Papers completed"].values[0]
-        if isinstance(papers_completed, str):
-            papers_completed = eval(papers_completed)  # Convert string to list
-    else:
-        papers_completed = []
-else:
-    papers_completed = []
-
-# Get the current user's abandoned papers
-if current_user_id:
-    user_row = users_df[users_df["userID"] == current_user_id]
-    if not user_row.empty:
-        # Check if "Papers abandoned" column exists
-        if "Papers abandoned" in user_row.columns:
-            papers_abandoned = user_row["Papers abandoned"].values[0]
-            if isinstance(papers_abandoned, str):
-                papers_abandoned = eval(papers_abandoned)  # Convert string to list
+# Fetch user info from backend
+def fetch_user_info():
+    user_email = get_user_email()
+    token = get_token()
+    if not user_email or not token:
+        st.error("Not authenticated. Please log in again.")
+        st.stop()
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/users/me",
+            params={"email": user_email},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return resp.json()
         else:
-            papers_abandoned = []  # Initialize as an empty list if the column doesn't exist
-    else:
-        papers_abandoned = []
-else:
-    papers_abandoned = []
+            st.error("Could not fetch user info from backend.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
 
-# Loads the metadata from JSON files in the specified folder.
+# Fetch completed and abandoned PMIDs for the current user
+user_info = fetch_user_info()
+papers_completed = user_info.get("CompletedPMIDs", []) or []
+papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
+
+# Loads the metadata from backend via HTTP
 @st.cache_data
 def load_paper_metadata():
-    papers = []
-    for filename in os.listdir(JSON_FOLDER):
-        if filename.endswith(".json"):
-            try:
-                with open(os.path.join(JSON_FOLDER, filename), "r", encoding="utf-8") as f:
-                    raw = json.load(f)
-                    doc = raw[0]["documents"][0]
-                    front = doc["passages"][0]  # front matter
-                    meta = front["infons"]
-                    title = front["text"]
-                    # Extract the PMID
-                    pmid = meta.get("article-id_pmid", None)
-                    if pmid and (pmid in papers_completed or pmid in papers_abandoned):
-                        print(f"Skipping {filename}: already completed or abandoned")
-                        continue  # Skip papers that are already completed or abandoned
+    token = get_token()
+    if not token:
+        st.error("Not authenticated. Please log in again.")
+        st.stop()
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/papers",
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            papers = resp.json()
+            result = []
+            for paper in papers:
+                pmid = paper.get("PMID")
+                if pmid and (pmid in papers_completed or pmid in papers_abandoned):
+                    continue  # Skip papers that are already completed or abandoned
 
-                    # Extract and clean up authors
-                    authors = []
-                    for k, v in meta.items():
-                        if k.startswith("name_"):
-                            parts = v.split(";")
-                            surname = next((p.split(":")[1] for p in parts if p.startswith("surname:")), "").strip()
-                            given_names = next((p.split(":")[1] for p in parts if p.startswith("given-names:")), "").strip()
-                            if surname and given_names:
-                                authors.append(f"{given_names} {surname}")
-                            elif surname:
-                                authors.append(surname)
-                            elif given_names:
-                                authors.append(given_names)
+                # Authors: handle as string or list
+                authors = paper.get("Authors", [])
+                if isinstance(authors, list):
                     authors_str = ", ".join(authors)
+                else:
+                    authors_str = str(authors)
 
-                    # Extract pages
-                    fpage = meta.get("fpage", "N/A")
-                    lpage = meta.get("lpage", "N/A")
-                    pages = f"{fpage}-{lpage}" if fpage != "N/A" and lpage != "N/A" else "N/A"
+                # Pages
+                fpage = paper.get("FPage", "N/A")
+                lpage = paper.get("LPage", "N/A")
+                pages = f"{fpage}-{lpage}" if fpage != "N/A" and lpage != "N/A" else "N/A"
 
-                    papers.append({
-                        "title": title,
-                        "authors": authors_str,
-                        "volume": meta.get("volume", "?"),
-                        "issue": meta.get("issue", "?"),
-                        "pages": pages,
-                        "year": meta.get("year", "?"),
-                        "doi": meta.get("article-id_doi", ""),
-                        "link": f"https://doi.org/{meta.get('article-id_doi', '')}",
-                        "filename": filename,
-                        "pmid": pmid
-                    })
-            except Exception as e:
-                print(f"Skipping {filename}: {e}")
-    return papers
+                result.append({
+                    "title": paper.get("Title", ""),
+                    "authors": authors_str,
+                    "volume": paper.get("Volume", "?"),
+                    "issue": paper.get("Issue", "?"),
+                    "pages": pages,
+                    "year": paper.get("Year", "?"),
+                    "doi": paper.get("DOI_URL", ""),
+                    "link": paper.get("DOI_URL", ""),
+                    "filename": pmid,  # Use PMID as filename identifier
+                    "pmid": pmid
+                })
+            return result
+        else:
+            st.error(f"Failed to fetch papers: {resp.text}")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
+
+st.markdown(pick_paper["detail"])
 
 all_papers = load_paper_metadata()
 
@@ -134,7 +125,6 @@ def refresh_paper_list():
     for k in ["a", "b", "c", "d", "e"]:
         if k in st.session_state:
             del st.session_state[k]
-
 
 # Initialize session state for paper choices
 if "paper_choices" not in st.session_state:
@@ -173,7 +163,12 @@ for i, paper in enumerate(st.session_state.paper_choices):
     if metadata_parts:
         label += ", ".join(metadata_parts) + "\n\n"
 
-    label += f"[**Link**]({paper['link']})"
+    # Always use a proper DOI link
+    doi_link = paper.get("link", "")
+    if doi_link and not doi_link.startswith("http"):
+        doi_link = f"https://doi.org/{doi_link}"
+    if doi_link:
+        label += f"[**Link**]({doi_link})"
 
     st.checkbox(label, key=key, value=st.session_state.get(key, False),
                 on_change=select, args=(paper["filename"], key))
@@ -185,13 +180,12 @@ with col2:
         # Save the selected paper's metadata in session state
         selected_paper = next(paper for paper in st.session_state.paper_choices if paper["filename"] == st.session_state.selected_option)
 
-        # Extract the PMID from the selected paper's JSON file
-        with open(f"{JSON_FOLDER}/{selected_paper['filename']}", "r", encoding="utf-8") as f:
-            raw = json.load(f)
-            pmid = raw[0]["documents"][0]["passages"][0]["infons"].get("article-id_pmid", "PMID not found")
+        # Use the pmid directly (no local file access)
+        pmid = selected_paper["pmid"]
 
         st.session_state["selected_paper"] = pmid
         cookies["selected_paper"] = pmid
+        cookies.save()
         st.switch_page(pick_paper["buttons"][0]["page_link"])
         
 with col3:

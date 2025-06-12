@@ -88,7 +88,7 @@
         "7_thanks": {
             "title": "Thank you!",
             "body": {
-                "completed": "You completed annotation of the paper: <b>{paper_name}</b>.",
+                "completed": "You completed annotation of the paper: <b>{paper_name}</b>",
                 "stats": "You have completed in total <b>{papers_completed}</b> papers, annotated <b>{experiments_annotated}</b> experiments, and <b>{solutions_annotated}</b> solutions!",
                 "cta": "To start annotating another paper, click the button below and have another go!"
             }

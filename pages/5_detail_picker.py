@@ -2,7 +2,7 @@ import streamlit as st
 import uuid
 import pandas as pd
 import json
-import os
+import requests
 from streamlit_cookies_manager import CookieManager
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
@@ -16,67 +16,177 @@ st.set_option("client.showSidebarNavigation", False)
 
 # Initialize the cookie manager
 cookies = CookieManager(prefix="annotation_app_")
-
 if not cookies.ready():
     st.stop()
 
 handle_redirects(cookies)
 
-# Path to the folder containing JSON files
-JSON_FOLDER = "Full_text_jsons"
-
-# Path to the users table
-USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
+BACKEND_URL = "http://localhost:3000"
 
 with open("interchange.json", "r", encoding="utf-8") as f:
     interchange = json.load(f)
 
-# Function to load the selected paper's JSON file based on the PMID
-def load_paper_by_pmid(pmid):
-    for filename in os.listdir(JSON_FOLDER):
-        if filename.endswith(".json"):
-            try:
-                with open(os.path.join(JSON_FOLDER, filename), "r", encoding="utf-8") as f:
-                    raw = json.load(f)
-                    # Check if the PMID matches
-                    doc = raw[0]["documents"][0]
-                    front = doc["passages"][0]  # Front matter
-                    meta = front["infons"]
-                    extracted_pmid = meta.get("article-id_pmid", None)
-                    if extracted_pmid == pmid:
-                        return raw
-            except Exception as e:
-                st.error(f"Error reading file {filename}: {e}")
-    st.error(f"No JSON file found for PMID: {pmid}")
-    st.stop()
+# State persistence helpers
+def save_state_to_cookies():
+    cookies["cards"] = json.dumps(st.session_state.get("cards", []))
+    cookies["current_page"] = json.dumps(st.session_state.get("current_page", {}))
+    cookies["pages"] = json.dumps(st.session_state.get("pages", []))
+    cookies["active_solution_btn"] = json.dumps(st.session_state.get("active_solution_btn", {}))
 
+def load_state_from_cookies():
+    if "cards" not in st.session_state and "cards" in cookies and cookies["cards"]:
+        st.session_state["cards"] = json.loads(cookies["cards"])
+    if "current_page" not in st.session_state and "current_page" in cookies and cookies["current_page"]:
+        st.session_state["current_page"] = json.loads(cookies["current_page"])
+    if "pages" not in st.session_state and "pages" in cookies and cookies["pages"]:
+        st.session_state["pages"] = json.loads(cookies["pages"])
+    if "active_solution_btn" not in st.session_state and "active_solution_btn" in cookies and cookies["active_solution_btn"]:
+        st.session_state["active_solution_btn"] = json.loads(cookies["active_solution_btn"])
 
+# Load app state from cookies if present
+load_state_from_cookies()
+# Initialize session state
+if "links" not in st.session_state:
+    st.session_state.links = [
+        {"label": "Experiment Picker"},
+        {"label": "Solution Picker"},
+        {"label": "Coffee Break A"},
+        {"label": "Experiment Details"},
+        {"label": "Coffee Break B"},
+        {"label": "Solution Details"},
+        {"label": "Coffee Break C"}
+    ]
+if "pages" not in st.session_state:
+    st.session_state.pages = [
+        {"index": i + 1, "label": link["label"], "visited": 0}
+        for i, link in enumerate(st.session_state.links)
+    ]
+    st.session_state.pages[0]["visited"] = 1
+if "current_page" not in st.session_state:
+    st.session_state.current_page = {"page": st.session_state.links[0], "index": 0}
+
+# Add this to initialize cards if missing
+if "cards" not in st.session_state:
+    st.session_state["cards"] = [[] for _ in range(len(st.session_state.links))]
+    
 # Fetch the PMID
 pmid = get_pmid(cookies)
 
-# Load the selected paper's JSON file
+# Redirect to pick paper if no paper in progress
+if not pmid:
+    st.error("No paper in progress. Please pick a paper to annotate.")
+    st.switch_page("pages/2_pick_paper.py")
+
+# --- Backend user progress helpers ---
+
+def get_token():
+    return cookies.get("token") or st.session_state.get("token")
+
+def update_paper_in_progress(user_email, pmid):
+    token = get_token()
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/users/set_current_pmid",
+            json={"email": user_email, "pmid": pmid},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            st.session_state["paper_in_progress"] = pmid
+            cookies["paper_in_progress"] = pmid
+            cookies.save()
+        else:
+            st.error("Failed to update paper in progress in the database.")
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+
+def add_completed_paper(user_email, pmid):
+    token = get_token()
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/users/add_completed",
+            json={"email": user_email, "pmid": pmid},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code != 200:
+            st.error("Failed to add completed paper in the database.")
+            return False
+        return True
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        return False
+
+def clear_paper_in_progress(user_email):
+    token = get_token()
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/users/set_current_pmid",
+            json={"email": user_email, "pmid": None},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            st.session_state["paper_in_progress"] = None
+            cookies["paper_in_progress"] = ""
+            cookies.save()
+            return True
+        else:
+            st.error("Failed to clear paper in progress in the database.")
+            return False
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        return False
+
+def fetch_fulltext_by_pmid(pmid):
+    token = get_token()
+    if not token:
+        st.error("Not authenticated. Please log in again.")
+        st.stop()
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/fulltext",
+            params={"filename": str(pmid)},
+            cookies={"token": token},
+            timeout=15
+        )
+        if resp.status_code == 200:
+            results = resp.json()
+            if not results or not isinstance(results, list):
+                st.error("No fulltext found for this paper.")
+                st.stop()
+            return results
+        else:
+            st.error(f"Failed to fetch fulltext: {resp.text}")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
+
+# Load the selected paper's fulltext from backend
 if "paper_data" not in st.session_state:
-    raw = load_paper_by_pmid(pmid)
-    doc = raw[0]["documents"][0]
-    all_data = []
-    doi_link = None  # Initialize DOI link
-    for passage in doc["passages"]:
-        section_type = passage["infons"].get("section_type", "Unknown")
-        text = passage.get("text", "")
-        all_data.append({
-            "section_type": section_type,
-            "text": text
-        })
-        # Extract DOI link from the metadata
-        if "article-id_doi" in passage["infons"]:
-            doi_link = f"https://doi.org/{passage['infons']['article-id_doi']}"
-    # Convert to DataFrame
-    df = pd.DataFrame(all_data)
-    # Filter out sections that do not need to be annotated
-    df = df[~df["section_type"].isin(["TITLE", "REF", "SUPPL", "AUTH_CONT", "COMP_INT", "ACK_FUND"])]
+    raw = fetch_fulltext_by_pmid(pmid)
+    df = pd.DataFrame(raw)
+    if df.empty:
+        st.error("No fulltext data available for this paper.")
+        st.stop()
+    df["section_type"] = df.apply(
+        lambda row: f"{row['Section']} - {row['Type']}" if row["Type"] else row["Section"], axis=1
+    )
+    df = df[df["TextValue"].notnull() & (df["TextValue"].str.strip() != "")]
+    df = df.rename(columns={"TextValue": "text"})
     st.session_state["paper_data"] = df
-    st.session_state["tab_names"] = df["section_type"].unique().tolist()  # Extract unique tab names
-    st.session_state["doi_link"] = doi_link  # Save the DOI link in session state
+    st.session_state["tab_names"] = df["section_type"].unique().tolist()
+    doi_link = None
+    if "DOI_URL" in df.columns and pd.notnull(df["DOI_URL"].iloc[0]):
+        doi_link = df["DOI_URL"].iloc[0]
+    else:
+        doi_candidates = df[df["section_type"].str.contains("doi", case=False, na=False)]
+        if not doi_candidates.empty:
+            doi_link = doi_candidates["text"].iloc[0]
+    if doi_link and not str(doi_link).startswith("http"):
+        doi_link = f"https://doi.org/{doi_link}"
+    st.session_state["doi_link"] = doi_link
 
 # Sidebar style
 st.markdown("""
@@ -94,10 +204,8 @@ padding-top: 4rem;
 
 def colored_card(title, subtitle, bg_color="#1f77b4", text_color="#ffffff", key=None):
     if key is None:
-        key = str(uuid.uuid4())  # Generate unique key if none provided
-
+        key = str(uuid.uuid4())
     container_id = f"card-{key}"
-
     st.markdown(f"""
                 <div id="{container_id}" style="
                 background: linear-gradient(135deg, {bg_color}, #333333);
@@ -117,70 +225,34 @@ margin: 1rem 0;
 </div>
                 """, unsafe_allow_html=True)
 
-
-# Functions to load paper text + labels
 @st.cache_data
 def get_tab_body(tab_name):
     df = st.session_state["paper_data"]
     tmp = df[df.section_type == tab_name]
     return tmp['text'].str.cat(sep="\n\n") if not tmp.empty else "No content available for this section."
 
-
-if "pages" not in st.session_state:
-    st.session_state.links = [
-        {"label": "Experiment Picker"},
-        {"label": "Solution Picker"},
-        {"label": "Coffee Break A"},
-        {"label": "Experiment Details"},
-        {"label": "Coffee Break B"},
-        {"label": "Solution Details"},
-        {"label": "Coffee Break C"}
-    ]
-    st.session_state.pages = [
-        {"index": i + 1, "label": link["label"], "visited": 0}
-        for i, link in enumerate(st.session_state.links)
-    ]
-    st.session_state.current_page = {"page": st.session_state.links[0], "index": 0}
-    st.session_state.pages[0]["visited"] = 1
-
-if "cards" not in st.session_state:
-    st.session_state["cards"] = [[], [], [], [],[],[],[]]
-if "active_solution_btn" not in st.session_state:
-    st.session_state["active_solution_btn"] = {}
-
-# func to change page
+# Page navigation helpers
 def changePage(index):
     st.session_state.current_page = {
         "page": st.session_state.links[index],
         "index": index
     }
     st.session_state.pages[index]["visited"] = 1
+    save_state_to_cookies()
     st.rerun()
 
 def next():
     if st.session_state.current_page["index"] < len(st.session_state.links) - 1:
         changePage(st.session_state.current_page["index"] + 1)
 
-
 def prev():
     if st.session_state.current_page["index"] > 0:
         changePage(st.session_state.current_page["index"] - 1)
 
-
 def save():
-    pass
-
+    save_state_to_cookies()
 
 pageSelected = BreadCrumbs(st.session_state.links, st.session_state.current_page["page"], pages=st.session_state.pages)
-
-
-# for i, link in enumerate(st.session_state.links):
-#     if link["label"] == pageSelected:
-#         st.session_state.current_page = {
-#             "page": st.session_state.links[i],
-#             "index": i
-#         }
-#         break
 
 def check_tag(tag):
     if 'non-PI' in tag:
@@ -189,31 +261,27 @@ def check_tag(tag):
         return "PI"
 
 doi_link = st.session_state.get("doi_link")
+
 def displayTextHighlighter(labels, index):
-    # Main app: Tabs + Highlighting
-    # Dynamically load tab names from session state
     tab_names = st.session_state.get("tab_names", ["Unknown"])
     tabs = st.tabs(tab_names)
     results = []
-
     for i, (name, tab) in enumerate(zip(tab_names, tabs)):
         annotations = []
         if (len(st.session_state["cards"][st.session_state.current_page["index"]]) > 0):
             annotations = st.session_state["cards"][st.session_state.current_page["index"]][i]
-
-        # print(st.session_state["cards"][st.session_state.current_page["index"]][i],i)
         with tab:
             result = text_highlighter(
                 text=get_tab_body(name),
                 labels=labels,
                 text_height=400,
                 annotations=annotations,
-                key=f"text_highlighter_{name}_{index}"  # Assign a unique key for each tab
+                key=f"text_highlighter_{name}_{index}"
             )
-
             results.append(result)
+    st.session_state["cards"][st.session_state.current_page["index"]] = results
+    save_state_to_cookies()
     return results
-
 
 if st.session_state.current_page["page"]["label"] == st.session_state.links[0]["label"]:
     st.title(st.session_state.links[0]["label"])
@@ -226,10 +294,8 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[1]
     st.title(st.session_state.links[1]["label"])
     labels = [("PI experiment", "#6290C3"),
               ("non-PI experiment", "#F25757")]
-    # print(st.session_state["active_solution_btn"])
     st.session_state["cards"][1] = displayTextHighlighter(labels, 1)
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]["label"]:
-    # Hide sidebar with CSS
     st.markdown("""
 <style>
 [data-testid="stSidebar"] {display: none;}
@@ -237,7 +303,6 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]
 </style>
         """, unsafe_allow_html=True)
 
-    # Fetch Coffee Break A text from interchange.json
     coffee_break_a = interchange["pages"]["5_detail_picker"]["coffee_break_a"]
     st.title(interchange["pages"]["5_detail_picker"]["title"])
     st.markdown(f"#### {coffee_break_a['title']}")
@@ -246,17 +311,31 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]
     if doi_link:
         st.link_button("Go to full-text paper", doi_link)
 
-    # Editable table for experiments and solutions
-    exp_df = pd.DataFrame([
-        {
-            "Experiment name": "Immunoprecipitation",
+    exp_highlights = []
+    sol_highlights = []
+
+    for tab_results in st.session_state["cards"][0]:
+        for item in tab_results:
+            exp_highlights.append(item)
+    for tab_results in st.session_state["cards"][1]:
+        for item in tab_results:
+            sol_highlights.append(item)
+
+    max_len = max(len(exp_highlights), len(sol_highlights))
+    rows = []
+    for i in range(max_len):
+        exp = exp_highlights[i] if i < len(exp_highlights) else {}
+        sol = sol_highlights[i] if i < len(sol_highlights) else {}
+        rows.append({
+            "Experiment name": exp.get("text", ""),
             "Alternative Experiment Name": "",
-            "Experiment Type": "PI",
-            "Solution name": "extraction solution",
+            "Experiment Type": "PI" if exp.get("tag", "") == "PI experiment" else "non-PI" if exp.get("tag", "") == "non-PI experiment" else "",
+            "Solution name": sol.get("text", ""),
             "Alternative Solution Name": "",
-            "Solution Type": "PI"
-        }
-    ])
+            "Solution Type": "PI" if sol.get("tag", "") == "PI experiment" else "non-PI" if sol.get("tag", "") == "non-PI experiment" else ""
+        })
+
+    exp_df = pd.DataFrame(rows)
 
     edited_df = st.data_editor(
         exp_df,
@@ -277,7 +356,6 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]
         key="exp_editor"
     )
 
-    # Validate and correct Solution Type based on Experiment Type
     corrected = False
     for idx, row in edited_df.iterrows():
         if row["Experiment Type"] == "non-PI" and row["Solution Type"] != "non-PI":
@@ -287,7 +365,6 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]
     if corrected:
         st.error("Solution Type was set to 'non-PI' for rows where Experiment Type is 'non-PI'.")
 
-    # Save buttons for navigation
     col1, col2 = st.columns([1, 2])
     with col1:
         if st.button("Save", use_container_width=True):
@@ -296,6 +373,8 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]
         if st.button("Save & next", use_container_width=True):
             save()
             next()
+    save_state_to_cookies()
+
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[3]["label"]:
     st.title(st.session_state.links[3]["label"])
     labels = [
@@ -303,7 +382,6 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[3]
     ]
     st.session_state["cards"][2] = displayTextHighlighter(labels, 2)
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]["label"]:
-    # Hide sidebar with CSS
     st.markdown("""
 <style>
 [data-testid="stSidebar"] {display: none;}
@@ -311,7 +389,6 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]
 </style>
         """, unsafe_allow_html=True)
 
-    # Fetch Coffee Break B text from interchange.json
     coffee_break_b = interchange["pages"]["5_detail_picker"]["coffee_break_b"]
     st.title(interchange["pages"]["5_detail_picker"]["title"])
     st.markdown(f"#### {coffee_break_b['title']}")
@@ -383,7 +460,6 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]
         }
     )
 
-    # Save buttons for navigation
     col1, col2 = st.columns([1, 2])
     with col1:
         if st.button("Save", use_container_width=True):
@@ -392,6 +468,7 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]
         if st.button("Save & next", use_container_width=True):
             save()
             next()
+    save_state_to_cookies()
 
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[5]["label"]:
     st.title(st.session_state.links[5]["label"])
@@ -412,17 +489,14 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[6]
 </style>
         """, unsafe_allow_html=True)
 
-    # Fetch Coffee Break C text from interchange.json
     coffee_break_c = interchange["pages"]["5_detail_picker"]["coffee_break_c"]
     st.title(interchange["pages"]["5_detail_picker"]["title"])
     st.markdown(f"#### {coffee_break_c['title']}")
     st.write(coffee_break_c["body"])
 
-
     if doi_link:
         st.link_button("Go to full-text paper", doi_link)
 
-    # Dropdowns
     col1, col2 = st.columns([1, 1])
     with col1:
         experiment_type = st.selectbox("Experiment Type", ["PI", "non-PI"], key="exp_type_3")
@@ -433,7 +507,6 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[6]
             solution_type_options = ["non-PI"]
         solution_type = st.selectbox("Solution Type", solution_type_options, key="sol_type_3")
 
-    # pH, Temperature, Time
     col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
     with col1:
         st.text_input("pH", value="7.4")
@@ -448,16 +521,14 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[6]
             ],
             key="time_select"
         )
-    # Radio buttons
     st.radio(
-        "Solution details",  # Non-empty label for accessibility
+        "Solution details",
         ["Solution details not listed:", "Solution details listed:"],
         index=1,
         key="solution_details_radio",
-        label_visibility="collapsed"  # Hides the label visually
+        label_visibility="collapsed"
     )
 
-    # Editable table for solution details
     solution_df = pd.DataFrame([
         {
             "Chemical type": "Buffer",
@@ -488,64 +559,44 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[6]
         }
     )
 
-    # Save buttons for navigation
     col1, col2 = st.columns([1, 2])
     with col1:
         if st.button("Save", use_container_width=True):
             save()
     with col2:
         if st.button("Save & next", use_container_width=True):
-
-            # Add completed_paper to session state and cookies
             st.session_state["completed_paper"] = pmid
             cookies["completed_paper"] = pmid
 
-            # Clear selected_paper in cookies and session state
             if "selected_paper" in st.session_state:
                 del st.session_state["selected_paper"]
 
             cookies["selected_paper"] = ""
 
-            # Clear paper in progress in cookies and session state and users table
             if "paper_in_progress" in st.session_state:
                 del st.session_state["paper_in_progress"]
 
             cookies["paper_in_progress"] = ""
             cookies.save()
 
-            # Add pmid to Papers completed list in users table
-            userID = st.session_state.get("userID")
-            if userID:
-                try:
-                    users_df = pd.read_excel(USERS_TABLE_PATH)
-                    user_row = users_df[users_df["userID"] == userID]
-                    if not user_row.empty:
-                        papers_completed = eval(user_row["Papers completed"].values[0])
-                        papers_completed.append(pmid)
-                        users_df.loc[users_df["userID"] == userID, "Papers completed"] = str(papers_completed)
-                        users_df.to_excel(USERS_TABLE_PATH, index=False)
-                except Exception as e:
-                    st.error(f"Error updating users table: {e}")
+            user_email = st.session_state.get("userID")
+            if user_email:
+                # Only clear after add_completed_paper succeeds
+                if add_completed_paper(user_email, pmid):
+                    clear_paper_in_progress(user_email)
 
-            # Clear "Paper in progress" column in users table
-            users_df.loc[users_df["userID"] == userID, "Paper in progress"] = None
-            users_df.to_excel(USERS_TABLE_PATH, index=False)
-
-            # Reset navigation state after completing a paper
             if "pages" in st.session_state:
                 del st.session_state["pages"]
             if "current_page" in st.session_state:
                 del st.session_state["current_page"]
 
-            # reenable sidebar navigation
             st.set_option("client.showSidebarNavigation", True)
             st.switch_page("pages/7_thanks.py")
 else:
     st.title("")
-def render_sidebar():
 
+def render_sidebar():
     with st.sidebar:
-        # Use the DOI link dynamically
         st.title("Paper Annotation")
 
         if st.session_state.current_page["page"]["label"] == st.session_state.links[0]["label"]:
@@ -600,7 +651,6 @@ def render_sidebar():
                         bg_color=item['color']
                     )
         elif st.session_state.current_page["page"]["label"] == st.session_state.links[1]["label"]:
-            # print(st.session_state.cards)
             buttons = []
             for tab_index, tab_results in enumerate(st.session_state["cards"][0]):
                 for i, item in enumerate(tab_results):
@@ -617,32 +667,14 @@ def render_sidebar():
                 "column_2": "Type"
             }
             st.session_state["active_solution_btn"] = TableSelect(header, buttons, 2, key=st.session_state.links[1]["label"])
-            # for tab_index, tab_results in enumerate(st.session_state["cards"][1]):
-            #     for i, item in enumerate(tab_results):
-            #         full_type = table + " solution"
-            #         if full_type == item['tag']:
-            #             colored_card(
-            #                 title=f"{item['tag']}",
-            #                 subtitle=item['text'],
-            #                 bg_color=item['color']
-            #             )
-            #         elif table == "":
-            #             colored_card(
-            #                 title=f"{item['tag']}",
-            #                 subtitle=item['text'],
-            #                 bg_color=item['color']
-            #             )
 
         elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]["label"]:
             st.title(st.session_state.links[2]["label"])
 
         elif st.session_state.current_page["page"]["label"] == st.session_state.links[3]["label"]:
             st.title(st.session_state.links[3]["label"])
-        # elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]["label"]:
-        #     st.title(st.session_state.links[4]["label"])
         else:
             st.title("")
 
-# Render sidebar and highlighter everywhere except coffee breaks
 if "Coffee Break" not in st.session_state.current_page["page"]["label"]:
     render_sidebar()

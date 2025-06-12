@@ -54,8 +54,9 @@ def evaluate_email(email):
 	
 	return re.fullmatch(academic_email_pattern, email)
 
-# Function to fetch the PMID
-def get_pmid(cookies : CookieManager, redir: bool = True) -> str:
+def get_pmid(cookies: CookieManager, redir: bool = True) -> str:
+    import requests
+
     # Check if PMID is in session state
     if "paper_in_progress" in st.session_state:
         return st.session_state["paper_in_progress"]
@@ -66,30 +67,37 @@ def get_pmid(cookies : CookieManager, redir: bool = True) -> str:
         st.session_state["paper_in_progress"] = pmid_from_cookies
         return pmid_from_cookies
 
-    # Check the users table for the "Paper in progress" column
-    user_id = st.session_state.get("userID")
-    if user_id:
+    # Check the backend database for the user's current paper in progress
+    user_email = st.session_state.get("userID")
+    token = cookies.get("token") or st.session_state.get("token")
+    BACKEND_URL = "http://localhost:3000"
+    if user_email and token:
         try:
-            users_df = pd.read_excel(USERS_TABLE_PATH)
-            user_row = users_df[users_df["userID"] == user_id]
-            if not user_row.empty:
-                pmid_from_table = user_row["Paper in progress"].values[0]
-                if pd.notna(pmid_from_table):
-                    # Ensure the value is treated as a string
-                    pmid_from_table = str(int(pmid_from_table))
-                    st.session_state["paper_in_progress"] = pmid_from_table
-                    cookies["paper_in_progress"] = pmid_from_table
+            resp = requests.get(
+                f"{BACKEND_URL}/users/me",
+                params={"email": user_email},
+                cookies={"token": token},
+                timeout=10
+            )
+            if resp.status_code == 200:
+                user = resp.json()
+                pmid_from_db = user.get("CurrentPMID")
+                print(f"PMID from backend: {pmid_from_db}")
+                if pmid_from_db:
+                    st.session_state["paper_in_progress"] = pmid_from_db
+                    cookies["paper_in_progress"] = pmid_from_db
                     cookies.save()
-                    return pmid_from_table
+                    return pmid_from_db
+            # else: do nothing, will redirect below
         except Exception as e:
-            st.error(f"Error fetching PMID from users table: {e}")
+            st.error(f"Error fetching PMID from backend: {e}")
 
     # If PMID is not found anywhere
-    if(redir):
+    if redir:
         st.set_option("client.showSidebarNavigation", True)
         st.switch_page("pages/2_pick_paper.py")
         st.stop()
-    
+
     return None
 
 def get_selected_paper(cookies : CookieManager):

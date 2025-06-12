@@ -1,10 +1,8 @@
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
-from src.various import get_pmid, handle_redirects
+from src.various import handle_redirects
 from process_interchange import thanks
-import pandas as pd
-import json
-import os
+import requests
 
 # Set page configuration
 st.set_page_config(page_title="Thank You", layout="wide", initial_sidebar_state="collapsed")
@@ -17,49 +15,72 @@ if not cookies.ready():
 # Handle redirects if necessary
 handle_redirects(cookies)
 
+BACKEND_URL = "http://localhost:3000"
+
 # Fetch the PMID of the paper from completed_paper session state or cookies
 pmid = cookies.get("completed_paper") or st.session_state.get("completed_paper")
 if not pmid:
     st.switch_page("pages/2_pick_paper.py")
 
-# Path to folder with JSON papers
-JSON_FOLDER = "Full_text_jsons"
+def get_token():
+    return cookies.get("token") or st.session_state.get("token")
 
-# Path to the users table
-USERS_TABLE_PATH =  r"AWS_S3/users_table.xlsx" 
+def get_user_email():
+    return st.session_state.get("userID")
 
-# Load the users table
-users_df = pd.read_excel(USERS_TABLE_PATH)
+# Fetch user info from backend
+def fetch_user_info():
+    user_email = get_user_email()
+    token = get_token()
+    if not user_email or not token:
+        st.error("Not authenticated. Please log in again.")
+        st.stop()
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/users/me",
+            params={"email": user_email},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            st.error("Could not fetch user info from backend.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
 
-# Get the current user's completed papers
-current_user_id = st.session_state.get("userID")
-if current_user_id:
-    user_row = users_df[users_df["userID"] == current_user_id]
-    if not user_row.empty:
-        papers_completed = len(eval(user_row["Papers completed"].values[0]))
-    else:
-        papers_completed = 0
+# Fetch paper info from backend
+def fetch_paper_info(pmid):
+    token = get_token()
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/papers/{pmid}",
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            return None
+    except Exception as e:
+        return None
+
+# Get user info and stats
+user_info = fetch_user_info()
+st.write("DEBUG user_info:", user_info)
+papers_completed = len(user_info.get("CompletedPMIDs", []) or [])
+# Optionally, fetch more stats if your backend provides them
+experiments_annotated = user_info.get("ExperimentsAnnotated", 0)
+solutions_annotated = user_info.get("SolutionsAnnotated", 0)
+
+# Get the paper title from backend
+paper_info = fetch_paper_info(pmid)
+if paper_info and "Title" in paper_info:
+    paper_name = f"<i>{paper_info['Title']}</i>"
 else:
-    papers_completed = 0
-
-# Load the paper metadata to get the paper name
-def get_paper_name(pmid):
-    for filename in os.listdir(JSON_FOLDER):
-        if filename.endswith(".json"):
-            with open(os.path.join(JSON_FOLDER, filename), "r", encoding="utf-8") as f:
-                raw = json.load(f)
-                doc = raw[0]["documents"][0]
-                front = doc["passages"][0]  # front matter
-                meta = front["infons"]
-                if meta.get("article-id_pmid") == pmid:
-                    return front["text"]  # Return the paper title
-    return None
-
-paper_name = get_paper_name(pmid)
-
-# Set experiments and solutions annotated to 0 for now
-experiments_annotated = 0
-solutions_annotated = 0
+    paper_name = f"<i>{pmid}</i>"
 
 body = thanks["body"]
 
@@ -85,7 +106,6 @@ body_html = f"""
 """
 
 st.markdown(body_html, unsafe_allow_html=True)
-
 
 col1, col2, col3 = st.columns([3, 2, 3])
 with col2:

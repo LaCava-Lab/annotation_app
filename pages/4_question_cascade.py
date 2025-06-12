@@ -1,8 +1,6 @@
 import streamlit as st
 from process_interchange import question_cascade
-import os
-import json
-import pandas as pd
+import requests
 from streamlit_cookies_manager import CookieManager
 from src.various import handle_redirects, get_selected_paper
 
@@ -16,101 +14,92 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-JSON_FOLDER = "Full_text_jsons"
-USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
+BACKEND_URL = "http://localhost:3000"
 
-# Function to load the selected paper's JSON file based on the PMID
-def load_paper_by_pmid(pmid):
-    for filename in os.listdir(JSON_FOLDER):
-        if filename.endswith(".json"):
-            try:
-                with open(os.path.join(JSON_FOLDER, filename), "r", encoding="utf-8") as f:
-                    raw = json.load(f)
-                    # Check if the PMID matches
-                    doc = raw[0]["documents"][0]
-                    front = doc["passages"][0]
-                    meta = front["infons"]
-                    extracted_pmid = meta.get("article-id_pmid", None)
-                    if extracted_pmid == pmid:
-                        return raw
-            except Exception as e:
-                st.error(f"Error reading file {filename}: {e}")
-    st.error(f"No JSON file found for PMID: {pmid}")
-    st.stop()
+def get_token():
+    return cookies.get("token") or st.session_state.get("token")
 
-# Function to update the "Paper in progress" column
-def update_paper_in_progress(user_id, pmid):
-    # Load the users table
-    users_df = pd.read_excel(USERS_TABLE_PATH)
+def fetch_paper_by_pmid(pmid):
+    token = get_token()
+    if not token:
+        st.error("Not authenticated. Please log in again.")
+        st.stop()
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/papers",
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            papers = resp.json()
+            for paper in papers:
+                if str(paper.get("PMID")) == str(pmid):
+                    return paper
+            st.error(f"Paper with PMID {pmid} not found.")
+            st.stop()
+        else:
+            st.error(f"Failed to fetch papers: {resp.text}")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
 
-    # Find the row corresponding to the user
-    user_row = users_df[users_df["userID"] == user_id]
+# Function to update the "Paper in progress" in the database via backend
+def update_paper_in_progress(user_email, pmid):
+    token = get_token()
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/users/set_current_pmid",
+            json={"email": user_email, "pmid": pmid},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            st.session_state["paper_in_progress"] = pmid
+            cookies["paper_in_progress"] = pmid
+            cookies.save()
+        else:
+            st.error("Failed to update paper in progress in the database.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Could not connect to backend: {e}")
+        st.stop()
 
-    if not user_row.empty:
-        # Update the "Paper in progress" column
-        users_df.loc[users_df["userID"] == user_id, "Paper in progress"] = pmid
-
-        # Save the updated table back to the Excel file
-        users_df.to_excel(USERS_TABLE_PATH, index=False)
-
-        # Save the updated paper PMID in cookies and session state
-        st.session_state["paper_in_progress"] = pmid
-
-        cookies["paper_in_progress"] = pmid
-        cookies.save()
-    else:
-        print(f"User with ID {user_id} not found.")
-
-
-# Fetch the PMID
 pmid = get_selected_paper(cookies)
 if pmid is None:
     st.error("No paper selected. Please select a paper to annotate.")
     st.switch_page("pages/2_pick_paper.py")
 
-# Load the selected paper's JSON file
-raw = load_paper_by_pmid(pmid)
-doc = raw[0]["documents"][0]
+paper_meta = fetch_paper_by_pmid(pmid)
 
-# Extract paper metadata
-front = doc["passages"][0]
-meta = front["infons"]
-title = front["text"]
-# Extract and clean up authors
-authors = []
-for k, v in meta.items():
-    if k.startswith("name_"):
-        parts = v.split(";")
-        surname = next((p.split(":")[1] for p in parts if p.startswith("surname:")), "").strip()
-        given_names = next((p.split(":")[1] for p in parts if p.startswith("given-names:")), "").strip()
-        if surname and given_names:
-            authors.append(f"{given_names} {surname}")
-        elif surname:
-            authors.append(surname)
-        elif given_names:
-            authors.append(given_names)
-authors_str = ", ".join(authors)
+title = paper_meta.get("Title", "Unknown Title")
+authors = paper_meta.get("Authors", [])
+if isinstance(authors, list):
+    authors_str = ", ".join(authors)
+else:
+    authors_str = str(authors)
 
-# Dynamically construct the metadata parts
 metadata_parts = []
-if meta.get("issue", "?") != "?":
-    metadata_parts.append(f"**Issue:** {meta['issue']}")
-if meta.get("volume", "?") != "?":
-    metadata_parts.append(f"**Volume:** {meta['volume']}")
-fpage = meta.get("fpage", "N/A")
-lpage = meta.get("lpage", "N/A")
+if paper_meta.get("Issue", "?") != "?":
+    metadata_parts.append(f"**Issue:** {paper_meta['Issue']}")
+if paper_meta.get("Volume", "?") != "?":
+    metadata_parts.append(f"**Volume:** {paper_meta['Volume']}")
+fpage = paper_meta.get("FPage", "N/A")
+lpage = paper_meta.get("LPage", "N/A")
 if fpage != "N/A" and lpage != "N/A":
     metadata_parts.append(f"**Pages:** {fpage}-{lpage}")
-year = meta.get("year", "?")
+year = paper_meta.get("Year", "?")
 if year != "?":
     metadata_parts.append(f"**Year:** {year}")
 
-# Construct the DOI link if available
-doi = meta.get("article-id_doi", "")
-doi_link = f"https://doi.org/{doi}" if doi else None
+# Use the DOI/fulltext link as stored in the backend (not localhost)
+doi_link = paper_meta.get("DOI_URL", "")
+if doi_link and not doi_link.startswith("http"):
+    doi_link = f"https://doi.org/{doi_link}"
+if not doi_link:
+    doi_link = None
 
 # Display paper metadata
-#st.title(question_cascade["title"])
 st.markdown(f"""
     <div style="margin-top: -50px;">
         <h3>You have selected to annotate the paper:</h3>
@@ -123,7 +112,7 @@ if metadata_parts:
 # Description
 st.markdown("###")
 col1, col2, col3 = st.columns([0.5, 3, 0.5])
-with col2:  # Use the middle column
+with col2:
     st.markdown("""
         <div style="text-align: center; margin-bottom: -100px; margin-top: -40px;">
             Use the link to the full-text paper to scan through it and then answer the quick questionnaire below. 
@@ -135,7 +124,7 @@ with col2:  # Use the middle column
 
 # "Go to full-text paper" button
 st.markdown("###")
-col1, col2, col3 = st.columns([1.5, 1, 1])  # Creating three columns for centering
+col1, col2, col3 = st.columns([1.5, 1, 1])
 with col2:
     if doi_link:
         st.link_button("Go to full-text paper", doi_link)
@@ -145,15 +134,13 @@ with col2:
 # Questionnaire
 st.markdown("### Questionnaire")
 
-# Question 1
 st.markdown('<div>1. Is the paper describing wet lab experiments that aim to understand protein interactions?</div>', unsafe_allow_html=True)
-col1, col2 = st.columns([1, 200])  # Creating two columns for better layout
+col1, col2 = st.columns([1, 200])
 with col1:
     st.markdown("")
 with col2:
     q1 = st.radio("Question 1", options=["YES", "NO"], horizontal=True, key="q1_radio", label_visibility="collapsed")
 
-# Sub-question 1a
 st.markdown('<div style="padding-left: 20px; margin-bottom: 10px;">1a. What is the main method the authors use to understand protein interactions?</div>', unsafe_allow_html=True)
 col1, col2 = st.columns([1, 60])
 with col1:
@@ -161,15 +148,13 @@ with col1:
 with col2:
     q1a = st.text_input("Sub-question 1a", placeholder="Enter the main method here", key="q1a_text", label_visibility="collapsed")
 
-# Sub-question 1b
 st.markdown('<div style="padding-left: 20px;">1b. Is this method preserving protein interactions in a cell-free system (e.g., whole cell extracts)?</div>', unsafe_allow_html=True)
-col1, col2 = st.columns([1, 50]) 
+col1, col2 = st.columns([1, 50])
 with col1:
     st.markdown("")
 with col2:
     q1b = st.radio("Sub-question 1b", options=["YES", "NO"], horizontal=True, key="q1b_radio", label_visibility="collapsed")
 
-# Sub-question 1c
 st.markdown('<div style="padding-left: 20px;">1c. Is this method using any type of cross-linking to preserve protein interactions?</div>', unsafe_allow_html=True)
 col1, col2 = st.columns([1, 50])
 with col1:
@@ -177,21 +162,17 @@ with col1:
 with col2:
     q1c = st.radio("Sub-question 1c", options=["YES", "NO"], horizontal=True, key="q1c_radio", label_visibility="collapsed")
 
-# Question 2
 st.markdown('<div style="margin-bottom: 10px;">2. What is your level of familiarity with the topic of this paper?</div>', unsafe_allow_html=True)
 q2 = st.selectbox("Question 2", ["Basic", "Course", "MSc research", "PhD field", "PhD research", "Expert"], key="q2_select", label_visibility="collapsed")
 
-# Question 3
 st.markdown('<div style="margin-bottom: 10px;">3. What is your level of familiarity with the methods and experiments in this paper?</div>', unsafe_allow_html=True)
 q3 = st.selectbox("Question 3", ["Basic", "Course", "MSc research", "PhD field", "PhD research", "Expert"], key="q3_select", label_visibility="collapsed")
 
-# Navigation buttons
 st.markdown("""
     <div style="margin-top: -20px;">
     </div>
 """, unsafe_allow_html=True)
 
-# Check if all fields are filled
 all_filled = (
     q1 is not None and
     q1a.strip() != "" and
@@ -202,12 +183,12 @@ all_filled = (
 )
 
 col1, col2, col3 = st.columns([1.5, 1, 1])
-with col1:  #"Pick another" button
+with col1:
     if st.button("Pick another paper", type="secondary", key="pick_another_button"):
         st.session_state["selected_paper"] = None
         cookies["selected_paper"] = None
         st.switch_page("pages/2_pick_paper.py")
-with col2:  # "Confirm paper" button
+with col2:
     st.button(
         "Confirm paper",
         type="primary",
@@ -216,6 +197,7 @@ with col2:  # "Confirm paper" button
     )
     if all_filled and st.session_state.get("confirm_paper_button"):
         st.set_option("client.showSidebarNavigation", False)
-        # Update the "Paper in progress" column
-        update_paper_in_progress(st.session_state["userID"], pmid)
+        # Use user email for backend update
+        user_email = st.session_state.get("userID")
+        update_paper_in_progress(user_email, pmid)
         st.switch_page("pages/5_detail_picker.py")
