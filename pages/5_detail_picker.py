@@ -2,13 +2,13 @@ import streamlit as st
 import uuid
 import pandas as pd
 import json
-import requests
 from streamlit_cookies_manager import CookieManager
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
 from process_interchange import detail_picker
-from src.various import get_pmid, handle_redirects
+from src.various import get_pmid, handle_redirects, get_token, get_user_key
 from st_components.BreadCrumbs import BreadCrumbs
+from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid
 
 # Set page config
 st.set_page_config(initial_sidebar_state="expanded", page_title="Paper Annotation", layout="wide")
@@ -20,8 +20,6 @@ if not cookies.ready():
     st.stop()
 
 handle_redirects(cookies)
-
-BACKEND_URL = "http://localhost:3000"
 
 with open("interchange.json", "r", encoding="utf-8") as f:
     interchange = json.load(f)
@@ -78,96 +76,9 @@ if not pmid:
     st.error("No paper in progress. Please pick a paper to annotate.")
     st.switch_page("pages/2_pick_paper.py")
 
-
-# Backend progress helpers
-
-def get_token():
-    return cookies.get("token") or st.session_state.get("token")
-
-def update_paper_in_progress(user_email, pmid):
-    token = get_token()
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/users/set_current_pmid",
-            json={"email": user_email, "pmid": pmid},
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            st.session_state["paper_in_progress"] = pmid
-            cookies["paper_in_progress"] = pmid
-            cookies.save()
-        else:
-            st.error("Failed to update paper in progress in the database.")
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-
-def add_completed_paper(user_email, pmid):
-    token = get_token()
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/users/add_completed",
-            json={"email": user_email, "pmid": pmid},
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code != 200:
-            st.error("Failed to add completed paper in the database.")
-            return False
-        return True
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-        return False
-
-def clear_paper_in_progress(user_email):
-    token = get_token()
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/users/set_current_pmid",
-            json={"email": user_email, "pmid": None},
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            st.session_state["paper_in_progress"] = None
-            cookies["paper_in_progress"] = ""
-            cookies.save()
-            return True
-        else:
-            st.error("Failed to clear paper in progress in the database.")
-            return False
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-        return False
-
-def fetch_fulltext_by_pmid(pmid):
-    token = get_token()
-    if not token:
-        st.error("Not authenticated. Please log in again.")
-        st.stop()
-    try:
-        resp = requests.get(
-            f"{BACKEND_URL}/fulltext",
-            params={"filename": str(pmid)},
-            cookies={"token": token},
-            timeout=15
-        )
-        if resp.status_code == 200:
-            results = resp.json()
-            if not results or not isinstance(results, list):
-                st.error("No fulltext found for this paper.")
-                st.stop()
-            return results
-        else:
-            st.error(f"Failed to fetch fulltext: {resp.text}")
-            st.stop()
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-        st.stop()
-
-# Load the selected paper's fulltext
+# Load the selected paper's fulltext using backend function
 if "paper_data" not in st.session_state:
-    raw = fetch_fulltext_by_pmid(pmid)
+    raw = fetch_fulltext_by_pmid(pmid, get_token(cookies))
     df = pd.DataFrame(raw)
     if df.empty:
         st.error("No fulltext data available for this paper.")
@@ -179,13 +90,8 @@ if "paper_data" not in st.session_state:
     df = df.rename(columns={"TextValue": "text"})
     st.session_state["paper_data"] = df
     st.session_state["tab_names"] = df["section_type"].unique().tolist()
-    doi_link = None
-    if "DOI_URL" in df.columns and pd.notnull(df["DOI_URL"].iloc[0]):
-        doi_link = df["DOI_URL"].iloc[0]
-    else:
-        doi_candidates = df[df["section_type"].str.contains("doi", case=False, na=False)]
-        if not doi_candidates.empty:
-            doi_link = doi_candidates["text"].iloc[0]
+    token = get_token(cookies)
+    doi_link = fetch_doi_by_pmid(pmid, token)
     if doi_link and not str(doi_link).startswith("http"):
         doi_link = f"https://doi.org/{doi_link}"
     st.session_state["doi_link"] = doi_link
@@ -581,11 +487,12 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[6]
             cookies["paper_in_progress"] = ""
             cookies.save()
 
-            user_email = st.session_state.get("userID")
-            if user_email:
+            user_key = get_user_key(cookies)
+            token = get_token(cookies)
+            if user_key:
                 # Only clear after add_completed_paper succeeds
-                if add_completed_paper(user_email, pmid):
-                    clear_paper_in_progress(user_email)
+                if add_completed_paper(user_key, pmid):
+                    clear_paper_in_progress(user_key, token)
 
             if "pages" in st.session_state:
                 del st.session_state["pages"]

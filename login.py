@@ -4,11 +4,9 @@ import streamlit as st
 st.set_page_config(initial_sidebar_state="collapsed")
 st.set_option("client.showSidebarNavigation", False)
 
-import requests
 from src.various import get_pmid
 from streamlit_cookies_manager import CookieManager
-
-BACKEND_URL = "http://localhost:3000"
+from src.database import login_user, signup_user  # Import your backend functions
 
 # Initialize the cookie manager
 cookies = CookieManager(prefix="annotation_app_")
@@ -18,8 +16,8 @@ if not cookies.ready():
 # Check cookies for session state
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = cookies.get("logged_in", False)
-if "userID" not in st.session_state:
-    st.session_state["userID"] = cookies.get("userID", None)
+if "userKey" not in st.session_state:
+    st.session_state["userKey"] = cookies.get("userKey", None)
 if "token" not in st.session_state:
     st.session_state["token"] = cookies.get("token", None)
 
@@ -46,48 +44,30 @@ if st.button("Log in", type="primary"):
     if not email or not pin:
         st.error("Please enter both email and PIN.")
         st.stop()
+    success, result = login_user(email, pin)
+    if success:
+        token = result["token"]
+        user_key = result["userKey"]
+        # Save token and login state in cookies and session state
+        st.session_state.logged_in = True
+        st.session_state["userKey"] = user_key
+        st.session_state["token"] = token
+        cookies["logged_in"] = True
+        cookies["userKey"] = user_key
+        cookies["token"] = token
+        cookies.save()
 
-    try:
-        # Send login request to backend
-        resp = requests.post(
-            f"{BACKEND_URL}/auth/login",
-            json={"UserEmail": email.strip(), "UserPIN": pin.strip()},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            # Extract token and userID from response
-            token = resp.cookies.get("token") or resp.json().get("token")
-            user_id = resp.json().get("userID") or email.strip()
-            if not token:
-                st.error("Login failed: No token received.")
-                st.stop()
+        st.success("Logged in successfully!")
+        st.set_option("client.showSidebarNavigation", True)
 
-            # Save token and login state in cookies and session state
-            st.session_state.logged_in = True
-            st.session_state["userID"] = user_id
-            st.session_state["token"] = token
-            cookies["logged_in"] = True
-            cookies["userID"] = user_id
-            cookies["token"] = token
-            cookies.save()
-
-            st.success("Logged in successfully!")
-            st.set_option("client.showSidebarNavigation", True)
-
-            pmid = get_pmid(cookies)
-            print(f"DEBUG: Retrieved PMID: {pmid}")
-            if pmid:
-                st.switch_page("pages/1_resume.py")
-            else:
-                st.switch_page("pages/2_pick_paper.py")
+        pmid = get_pmid(cookies)
+        print(f"DEBUG: Retrieved PMID: {pmid}")
+        if pmid:
+            st.switch_page("pages/1_resume.py")
         else:
-            try:
-                msg = resp.json().get("error") or resp.json().get("message") or "Login failed."
-            except Exception:
-                msg = "Login failed."
-            st.error(msg)
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
+            st.switch_page("pages/2_pick_paper.py")
+    else:
+        st.error(result)
 
 st.write("---")
 st.write("Don't have an account? Sign up below:")
@@ -99,30 +79,19 @@ if st.button("Sign up", type="secondary"):
     if not signup_email or not signup_pin:
         st.error("Please enter both email and PIN for sign-up.")
         st.stop()
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/auth/signup",
-            json={"UserEmail": signup_email.strip(), "UserPIN": signup_pin.strip()},
-            timeout=10
-        )
-        if resp.status_code == 201:
-            st.success("Account created! Please log in above.")
-        else:
-            try:
-                msg = resp.json().get("error") or resp.json().get("message") or "Sign-up failed."
-            except Exception:
-                msg = "Sign-up failed."
-            st.error(msg)
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
+    success, msg = signup_user(signup_email, signup_pin)
+    if success:
+        st.success(msg)
+    else:
+        st.error(msg)
         
 if st.session_state.get("logged_in"):
     if st.button("Log out"):
         st.session_state.logged_in = False
-        st.session_state["userID"] = None
+        st.session_state["userKey"] = None
         st.session_state["token"] = None
         cookies["logged_in"] = False
-        cookies["userID"] = ""
+        cookies["userKey"] = ""
         cookies["token"] = ""
         cookies.save()
         st.rerun()

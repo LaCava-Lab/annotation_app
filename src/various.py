@@ -18,41 +18,40 @@ def evaluate_userID_format(userid):
     return None  # Means it's valid
 
 def evaluate_userID(userid):
-	'''
-	userid is a string of digits 0-9, of variable length
-	
-	> n: papers (2)
-	Test IDs (min, max): 111219, 9991971
-	
-	> n: papers (9)
-	Test IDs (min, max): 111996, 9998964
-	'''
-	#userid should be all numbers and no letters
-	try:
-		float(userid)
-	except:
-		return False
+    '''
+    userid is a string of digits 0-9, of variable length
 
-	#userid should encode an integer value (number of papers n) ranging from 2 to 9.
-	m = float(userid[:3])
-	[a, b, c] = [float(no) for no in userid[:3]]
-	s = a+b+c
-	e = float(userid[3:])
-	try:
-		n = (e + s)/m
-	except:
-		return False
-	if (n == int(n)) and (n in list(range(2,10))):
-		return True
-	else:
-		return False
+    > n: papers (2)
+    Test IDs (min, max): 111219, 9991971
+
+    > n: papers (9)
+    Test IDs (min, max): 111996, 9998964
+    '''
+    # userid should be all numbers and no letters
+    try:
+        float(userid)
+    except:
+        return False
+
+    # userid should encode an integer value (number of papers n) ranging from 2 to 9.
+    m = float(userid[:3])
+    [a, b, c] = [float(no) for no in userid[:3]]
+    s = a+b+c
+    e = float(userid[3:])
+    try:
+        n = (e + s)/m
+    except:
+        return False
+    if (n == int(n)) and (n in list(range(2,10))):
+        return True
+    else:
+        return False
 
 def evaluate_email(email):
-	import re
+    import re
 
-	academic_email_pattern = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
-	
-	return re.fullmatch(academic_email_pattern, email)
+    academic_email_pattern = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+    return re.fullmatch(academic_email_pattern, email)
 
 def get_pmid(cookies: CookieManager, redir: bool = True) -> str:
     import requests
@@ -68,14 +67,14 @@ def get_pmid(cookies: CookieManager, redir: bool = True) -> str:
         return pmid_from_cookies
 
     # Check the backend database for the user's current paper in progress
-    user_email = st.session_state.get("userID")
+    user_key = st.session_state.get("userKey") or cookies.get("userKey")
     token = cookies.get("token") or st.session_state.get("token")
     BACKEND_URL = "http://localhost:3000"
-    if user_email and token:
+    if user_key and token:
         try:
             resp = requests.get(
                 f"{BACKEND_URL}/users/me",
-                params={"email": user_email},
+                params={"userKey": user_key},
                 cookies={"token": token},
                 timeout=10
             )
@@ -113,15 +112,22 @@ def get_selected_paper(cookies : CookieManager):
 
     # If not found, return None
     return None
-     
 
 def handle_redirects(cookies : CookieManager):
     # Check cookies for session state
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = cookies.get("logged_in", False)
-    if "userID" not in st.session_state:
-        st.session_state["userID"] = cookies.get("userID", None)
+    if "userKey" not in st.session_state:
+        st.session_state["userKey"] = cookies.get("userKey", None)
 
     if not st.session_state.logged_in:
         st.set_option("client.showSidebarNavigation", False)
         st.switch_page("login.py")
+
+# Helper to get token
+def get_token(cookies : CookieManager):
+    return cookies.get("token") or st.session_state.get("token")
+
+# Helper to get user key
+def get_user_key(cookies : CookieManager):
+    return st.session_state.get("userKey") or cookies.get("userKey")

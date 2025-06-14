@@ -1,9 +1,9 @@
 import streamlit as st
 import random
-import requests
 from process_interchange import pick_paper
-from src.various import get_pmid, handle_redirects
+from src.various import get_pmid, handle_redirects, get_token, get_user_key
 from streamlit_cookies_manager import CookieManager
+from src.database import fetch_user_info, fetch_all_papers
 
 st.set_page_config(page_title=pick_paper["title"], layout="wide", initial_sidebar_state="collapsed")
 st.title(pick_paper["title"])
@@ -15,44 +15,24 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-BACKEND_URL = "http://localhost:3000"
-
 pmid = get_pmid(cookies, redir=False)
 if pmid:
     st.switch_page("pages/1_resume.py")
     st.stop()
-    
-def get_token():
-    return cookies.get("token") or st.session_state.get("token")
-
-def get_user_email():
-    return st.session_state.get("userID")
 
 # Fetch user info from backend
-def fetch_user_info():
-    user_email = get_user_email()
-    token = get_token()
-    if not user_email or not token:
-        st.error("Not authenticated. Please log in again.")
-        st.stop()
-    try:
-        resp = requests.get(
-            f"{BACKEND_URL}/users/me",
-            params={"email": user_email},
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            return resp.json()
-        else:
-            st.error("Could not fetch user info from backend.")
-            st.stop()
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-        st.stop()
+user_key = get_user_key(cookies)
+token = get_token(cookies)
 
-# Fetch completed and abandoned PMIDs for the current user
-user_info = fetch_user_info()
+if not user_key or not token:
+    st.error("Not authenticated. Please log in again.")
+    st.stop()
+
+success, user_info = fetch_user_info(user_key, token)
+if not success:
+    st.error(user_info)
+    st.stop()
+
 papers_completed = user_info.get("CompletedPMIDs", []) or []
 papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
 
@@ -63,51 +43,41 @@ def load_paper_metadata():
     if not token:
         st.error("Not authenticated. Please log in again.")
         st.stop()
-    try:
-        resp = requests.get(
-            f"{BACKEND_URL}/papers",
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            papers = resp.json()
-            result = []
-            for paper in papers:
-                pmid = paper.get("PMID")
-                if pmid and (pmid in papers_completed or pmid in papers_abandoned):
-                    continue  # Skip papers that are already completed or abandoned
-
-                # Authors: handle as string or list
-                authors = paper.get("Authors", [])
-                if isinstance(authors, list):
-                    authors_str = ", ".join(authors)
-                else:
-                    authors_str = str(authors)
-
-                # Pages
-                fpage = paper.get("FPage", "N/A")
-                lpage = paper.get("LPage", "N/A")
-                pages = f"{fpage}-{lpage}" if fpage != "N/A" and lpage != "N/A" else "N/A"
-
-                result.append({
-                    "title": paper.get("Title", ""),
-                    "authors": authors_str,
-                    "volume": paper.get("Volume", "?"),
-                    "issue": paper.get("Issue", "?"),
-                    "pages": pages,
-                    "year": paper.get("Year", "?"),
-                    "doi": paper.get("DOI_URL", ""),
-                    "link": paper.get("DOI_URL", ""),
-                    "filename": pmid,
-                    "pmid": pmid
-                })
-            return result
-        else:
-            st.error(f"Failed to fetch papers: {resp.text}")
-            st.stop()
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
+    success, papers = fetch_all_papers(token)
+    if not success:
+        st.error(papers)
         st.stop()
+    result = []
+    for paper in papers:
+        pmid = paper.get("PMID")
+        if pmid and (pmid in papers_completed or pmid in papers_abandoned):
+            continue  # Skip papers that are already completed or abandoned
+
+        # Authors: handle as string or list
+        authors = paper.get("Authors", [])
+        if isinstance(authors, list):
+            authors_str = ", ".join(authors)
+        else:
+            authors_str = str(authors)
+
+        # Pages
+        fpage = paper.get("FPage", "N/A")
+        lpage = paper.get("LPage", "N/A")
+        pages = f"{fpage}-{lpage}" if fpage != "N/A" and lpage != "N/A" else "N/A"
+
+        result.append({
+            "title": paper.get("Title", ""),
+            "authors": authors_str,
+            "volume": paper.get("Volume", "?"),
+            "issue": paper.get("Issue", "?"),
+            "pages": pages,
+            "year": paper.get("Year", "?"),
+            "doi": paper.get("DOI_URL", ""),
+            "link": paper.get("DOI_URL", ""),
+            "filename": pmid,
+            "pmid": pmid
+        })
+    return result
 
 st.markdown(pick_paper["detail"])
 
@@ -176,12 +146,15 @@ for i, paper in enumerate(st.session_state.paper_choices):
 col2, col3 = st.columns([6, 6])
 with col2:
     if st.button(pick_paper["buttons"][0]["text"], type="primary", key="go_button", disabled=not st.session_state.selected_option):
+        # Reset navigation/session state for new annotation
+        for key in ["pages", "current_page", "cards", "active_solution_btn"]:
+            if key in st.session_state:
+                del st.session_state[key]
+            if key in cookies:
+                cookies[key] = ""
         # Save the selected paper's metadata in session state
         selected_paper = next(paper for paper in st.session_state.paper_choices if paper["filename"] == st.session_state.selected_option)
-
-        # Set selected paper in session state and cookies
         pmid = selected_paper["pmid"]
-
         st.session_state["selected_paper"] = pmid
         cookies["selected_paper"] = pmid
         cookies.save()

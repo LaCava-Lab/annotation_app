@@ -1,8 +1,8 @@
 import streamlit as st
 from process_interchange import question_cascade
-import requests
 from streamlit_cookies_manager import CookieManager
-from src.various import handle_redirects, get_selected_paper
+from src.various import handle_redirects, get_selected_paper, get_token, get_user_key
+from src.database import fetch_paper_info, update_paper_in_progress
 
 # Set page config
 st.set_page_config(page_title="Questionnaire", layout="wide", initial_sidebar_state="collapsed")
@@ -14,63 +14,16 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-BACKEND_URL = "http://localhost:3000"
-
-def get_token():
-    return cookies.get("token") or st.session_state.get("token")
-
-def fetch_paper_by_pmid(pmid):
-    token = get_token()
-    if not token:
-        st.error("Not authenticated. Please log in again.")
-        st.stop()
-    try:
-        resp = requests.get(
-            f"{BACKEND_URL}/papers",
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            papers = resp.json()
-            for paper in papers:
-                if str(paper.get("PMID")) == str(pmid):
-                    return paper
-            st.error(f"Paper with PMID {pmid} not found.")
-            st.stop()
-        else:
-            st.error(f"Failed to fetch papers: {resp.text}")
-            st.stop()
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-        st.stop()
-
-# Function to update the "Paper in progress" in the database
-def update_paper_in_progress(user_email, pmid):
-    token = get_token()
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/users/set_current_pmid",
-            json={"email": user_email, "pmid": pmid},
-            cookies={"token": token},
-            timeout=10
-        )
-        if resp.status_code == 200:
-            st.session_state["paper_in_progress"] = pmid
-            cookies["paper_in_progress"] = pmid
-            cookies.save()
-        else:
-            st.error("Failed to update paper in progress in the database.")
-            st.stop()
-    except Exception as e:
-        st.error(f"Could not connect to backend: {e}")
-        st.stop()
-
 pmid = get_selected_paper(cookies)
 if pmid is None:
     st.error("No paper selected. Please select a paper to annotate.")
     st.switch_page("pages/2_pick_paper.py")
 
-paper_meta = fetch_paper_by_pmid(pmid)
+token = get_token(cookies)
+success, paper_meta = fetch_paper_info(pmid, token)
+if not success:
+    st.error("Could not fetch paper info.")
+    st.stop()
 
 title = paper_meta.get("Title", "Unknown Title")
 authors = paper_meta.get("Authors", [])
@@ -197,7 +150,6 @@ with col2:
     )
     if all_filled and st.session_state.get("confirm_paper_button"):
         st.set_option("client.showSidebarNavigation", False)
-        # Use user email for backend update
-        user_email = st.session_state.get("userID")
-        update_paper_in_progress(user_email, pmid)
+        user_key = get_user_key(cookies)
+        update_paper_in_progress(user_key, pmid, token)
         st.switch_page("pages/5_detail_picker.py")

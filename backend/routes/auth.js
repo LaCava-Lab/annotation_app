@@ -44,14 +44,12 @@ router.post('/signup', async (req, res) => {
       ClosedSessionID: []
     });
 
-    res.status(201).json({ message: 'User created', UserKey: newUserKey });
-
+    res.status(201).json({ message: 'User created', userKey: newUserKey });
   } catch (err) {
     console.error('Signup error:', err); 
     res.status(500).json({ error: err.message });
   }
 });
-
 
 router.post('/login', async (req, res) => {
   const { UserEmail, UserPIN } = req.body;
@@ -69,7 +67,8 @@ router.post('/login', async (req, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
-  res.json({ message: 'Logged in' });
+  // Send userKey and token in the response
+  res.json({ message: 'Logged in', userKey: user.UserKey, token });
 });
 
 router.post('/logout', (req, res) => {
