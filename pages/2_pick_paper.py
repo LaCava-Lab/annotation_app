@@ -39,7 +39,7 @@ papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
 # Loads the metadata from backend via HTTP
 @st.cache_data
 def load_paper_metadata():
-    token = get_token()
+    token = get_token(cookies)
     if not token:
         st.error("Not authenticated. Please log in again.")
         st.stop()
@@ -60,16 +60,18 @@ def load_paper_metadata():
         else:
             authors_str = str(authors)
 
-        # Pages
-        fpage = paper.get("FPage", "N/A")
-        lpage = paper.get("LPage", "N/A")
-        pages = f"{fpage}-{lpage}" if fpage != "N/A" and lpage != "N/A" else "N/A"
+        # Journal, Issue, Volume, Pages
+        journal = paper.get("Journal", None)
+        issue = paper.get("Issue", None)
+        volume = paper.get("Volume", None)
+        pages = paper.get('Pages')
 
         result.append({
             "title": paper.get("Title", ""),
             "authors": authors_str,
-            "volume": paper.get("Volume", "?"),
-            "issue": paper.get("Issue", "?"),
+            "journal": journal,
+            "issue": issue,
+            "volume": volume,
             "pages": pages,
             "year": paper.get("Year", "?"),
             "doi": paper.get("DOI_URL", ""),
@@ -110,7 +112,6 @@ def select(option, key):
             if k != key:
                 st.session_state[k] = False
 
-# Display the 5 random papers
 for i, paper in enumerate(st.session_state.paper_choices):
     key = chr(ord("a") + i)
     label = (
@@ -119,18 +120,23 @@ for i, paper in enumerate(st.session_state.paper_choices):
         f"({paper['year']})\n\n"
     )
 
-    # Dynamically construct the metadata parts
-    metadata_parts = []
-    if paper.get('issue', '?') != "?":
-        metadata_parts.append(f"**Issue:** {paper['issue']}")
-    if paper.get('volume', '?') != "?":
-        metadata_parts.append(f"**Volume:** {paper['volume']}")
-    if paper.get('pages', 'N/A') != "N/A":
-        metadata_parts.append(f"**Pages:** {paper['pages']}")
+    # Add Journal, Issue, Volume in order if present
+    if paper.get('journal'):
+        label += f"**Journal:** {paper['journal']}, "
+    if paper.get('issue'):
+        label += f"**Issue:** {paper['issue']}, "
+    if paper.get('volume'):
+        label += f"**Volume:** {paper['volume']}, "
 
-    # Join metadata parts with a comma
-    if metadata_parts:
-        label += ", ".join(metadata_parts) + "\n\n"
+    # Only add Pages if not "nan"
+    pages = paper.get('pages')
+    if pages and str(pages).strip().lower() != "nan":
+        label += f"**Pages:** {pages}, "
+
+    # Remove trailing comma and space
+    if label.endswith(", "):
+        label = label[:-2]
+    label += "\n\n"
 
     # DOI Link extraction
     doi_link = paper.get("link", "")

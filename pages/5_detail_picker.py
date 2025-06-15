@@ -76,6 +76,20 @@ if not pmid:
     st.error("No paper in progress. Please pick a paper to annotate.")
     st.switch_page("pages/2_pick_paper.py")
 
+def normalize_section_name(section):
+    s = section.strip().upper()
+    if "INTRO" in s:
+        return "INTRODOCTION"
+    if "METHOD" in s:
+        return "METHODS"
+    if "RESULT" in s:
+        return "RESULTS"
+    if "DISCUSS" in s:
+        return "DISCUSSION"
+    if "SUPPL" in s:
+        return "SUPPLEMENTARY"
+    return section.strip()
+
 # Load the selected paper's fulltext using backend function
 if "paper_data" not in st.session_state:
     raw = fetch_fulltext_by_pmid(pmid, get_token(cookies))
@@ -83,13 +97,15 @@ if "paper_data" not in st.session_state:
     if df.empty:
         st.error("No fulltext data available for this paper.")
         st.stop()
-    df["section_type"] = df.apply(
-        lambda row: f"{row['Section']} - {row['Type']}" if row["Type"] else row["Section"], axis=1
-    )
+    # Only keep rows with non-empty text
     df = df[df["TextValue"].notnull() & (df["TextValue"].str.strip() != "")]
     df = df.rename(columns={"TextValue": "text"})
+    # Exclude ISSUE and FIG sections
+    df = df[~df["Section"].str.upper().isin(["ISSUE", "FIG"])]
+    # Normalize section names
+    df["section_type"] = df["Section"].apply(normalize_section_name)
     st.session_state["paper_data"] = df
-    st.session_state["tab_names"] = df["section_type"].unique().tolist()
+    st.session_state["tab_names"] = df["section_type"].drop_duplicates().tolist()
     token = get_token(cookies)
     doi_link = fetch_doi_by_pmid(pmid, token)
     if doi_link and not str(doi_link).startswith("http"):
@@ -137,7 +153,19 @@ margin: 1rem 0;
 def get_tab_body(tab_name):
     df = st.session_state["paper_data"]
     tmp = df[df.section_type == tab_name]
-    return tmp['text'].str.cat(sep="\n\n") if not tmp.empty else "No content available for this section."
+    lines = []
+    for _, row in tmp.iterrows():
+        t = row.get("Type", "").lower()
+        text = row["text"]
+        if t == "title_1":
+            lines.append(f"# {text}")  # Largest heading
+        elif t == "title_2":
+            lines.append(f"## {text}")  # Second largest heading
+        elif t == "title":
+            lines.append(f"### {text}")  # Third largest heading (if you have this type)
+        else:
+            lines.append(text)
+    return "\n\n".join(lines) if lines else "No content available for this section."
 
 # Page navigation helpers
 def changePage(index):

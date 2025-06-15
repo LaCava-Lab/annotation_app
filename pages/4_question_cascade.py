@@ -27,23 +27,29 @@ if not success:
 
 title = paper_meta.get("Title", "Unknown Title")
 authors = paper_meta.get("Authors", [])
-if isinstance(authors, list):
-    authors_str = ", ".join(authors)
-else:
-    authors_str = str(authors)
+authors_str = ", ".join(authors) if isinstance(authors, list) else str(authors)
 
-metadata_parts = []
-if paper_meta.get("Issue", "?") != "?":
-    metadata_parts.append(f"**Issue:** {paper_meta['Issue']}")
-if paper_meta.get("Volume", "?") != "?":
-    metadata_parts.append(f"**Volume:** {paper_meta['Volume']}")
-fpage = paper_meta.get("FPage", "N/A")
-lpage = paper_meta.get("LPage", "N/A")
-if fpage != "N/A" and lpage != "N/A":
-    metadata_parts.append(f"**Pages:** {fpage}-{lpage}")
-year = paper_meta.get("Year", "?")
-if year != "?":
-    metadata_parts.append(f"**Year:** {year}")
+# Build metadata string
+metadata_line = ""
+if paper_meta.get("Issue") and str(paper_meta["Issue"]).strip().lower() != "nan":
+    metadata_line += f"**Issue:** {paper_meta['Issue']}, "
+if paper_meta.get("Volume") and str(paper_meta["Volume"]).strip().lower() != "nan":
+    metadata_line += f"**Volume:** {paper_meta['Volume']}, "
+fpage = paper_meta.get("FPage")
+lpage = paper_meta.get("LPage")
+if (
+    fpage and lpage and
+    str(fpage).strip().lower() != "nan" and
+    str(lpage).strip().lower() != "nan"
+):
+    metadata_line += f"**Pages:** {fpage}-{lpage}, "
+year = paper_meta.get("Year")
+if year and str(year).strip().lower() != "nan":
+    metadata_line += f"**Year:** {year}, "
+
+# Remove trailing comma and space
+if metadata_line.endswith(", "):
+    metadata_line = metadata_line[:-2]
 
 # DOI link handling
 doi_link = paper_meta.get("DOI_URL", "")
@@ -59,8 +65,8 @@ st.markdown(f"""
         <strong>{authors_str}</strong>, <em>{title}</em>
     </div>
 """, unsafe_allow_html=True)
-if metadata_parts:
-    st.markdown(", ".join(metadata_parts))
+if metadata_line:
+    st.markdown(metadata_line)
 
 # Description
 st.markdown("###")
