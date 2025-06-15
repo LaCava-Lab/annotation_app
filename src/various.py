@@ -1,12 +1,8 @@
 from streamlit_cookies_manager import CookieManager
 import streamlit as st
 import pandas as pd
-
-# Path to folder with JSON papers
-JSON_FOLDER = "Full_text_jsons"
-
-# Path to the users table
-USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
+import random
+from src.database import fetch_all_papers
 
 def evaluate_userID_format(userid):
     if not userid.isdigit():
@@ -18,44 +14,44 @@ def evaluate_userID_format(userid):
     return None  # Means it's valid
 
 def evaluate_userID(userid):
-	'''
-	userid is a string of digits 0-9, of variable length
-	
-	> n: papers (2)
-	Test IDs (min, max): 111219, 9991971
-	
-	> n: papers (9)
-	Test IDs (min, max): 111996, 9998964
-	'''
-	#userid should be all numbers and no letters
-	try:
-		float(userid)
-	except:
-		return False
+    '''
+    userid is a string of digits 0-9, of variable length
 
-	#userid should encode an integer value (number of papers n) ranging from 2 to 9.
-	m = float(userid[:3])
-	[a, b, c] = [float(no) for no in userid[:3]]
-	s = a+b+c
-	e = float(userid[3:])
-	try:
-		n = (e + s)/m
-	except:
-		return False
-	if (n == int(n)) and (n in list(range(2,10))):
-		return True
-	else:
-		return False
+    > n: papers (2)
+    Test IDs (min, max): 111219, 9991971
+
+    > n: papers (9)
+    Test IDs (min, max): 111996, 9998964
+    '''
+    # userid should be all numbers and no letters
+    try:
+        float(userid)
+    except:
+        return False
+
+    # userid should encode an integer value (number of papers n) ranging from 2 to 9.
+    m = float(userid[:3])
+    [a, b, c] = [float(no) for no in userid[:3]]
+    s = a+b+c
+    e = float(userid[3:])
+    try:
+        n = (e + s)/m
+    except:
+        return False
+    if (n == int(n)) and (n in list(range(2,10))):
+        return True
+    else:
+        return False
 
 def evaluate_email(email):
-	import re
+    import re
 
-	academic_email_pattern = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
-	
-	return re.fullmatch(academic_email_pattern, email)
+    academic_email_pattern = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+    return re.fullmatch(academic_email_pattern, email)
 
-# Function to fetch the PMID
-def get_pmid(cookies : CookieManager, redir: bool = True) -> str:
+def get_pmid(cookies: CookieManager, redir: bool = True) -> str:
+    import requests
+
     # Check if PMID is in session state
     if "paper_in_progress" in st.session_state:
         return st.session_state["paper_in_progress"]
@@ -66,30 +62,36 @@ def get_pmid(cookies : CookieManager, redir: bool = True) -> str:
         st.session_state["paper_in_progress"] = pmid_from_cookies
         return pmid_from_cookies
 
-    # Check the users table for the "Paper in progress" column
-    user_id = st.session_state.get("userID")
-    if user_id:
+    # Check the backend database for the user's current paper in progress
+    user_key = st.session_state.get("userKey") or cookies.get("userKey")
+    token = cookies.get("token") or st.session_state.get("token")
+    BACKEND_URL = "http://localhost:3000"
+    if user_key and token:
         try:
-            users_df = pd.read_excel(USERS_TABLE_PATH)
-            user_row = users_df[users_df["userID"] == user_id]
-            if not user_row.empty:
-                pmid_from_table = user_row["Paper in progress"].values[0]
-                if pd.notna(pmid_from_table):
-                    # Ensure the value is treated as a string
-                    pmid_from_table = str(int(pmid_from_table))
-                    st.session_state["paper_in_progress"] = pmid_from_table
-                    cookies["paper_in_progress"] = pmid_from_table
+            resp = requests.get(
+                f"{BACKEND_URL}/users/me",
+                params={"userKey": user_key},
+                cookies={"token": token},
+                timeout=10
+            )
+            if resp.status_code == 200:
+                user = resp.json()
+                pmid_from_db = user.get("CurrentPMID")
+                if pmid_from_db:
+                    st.session_state["paper_in_progress"] = pmid_from_db
+                    cookies["paper_in_progress"] = pmid_from_db
                     cookies.save()
-                    return pmid_from_table
+                    return pmid_from_db
+            # else: do nothing, will redirect below
         except Exception as e:
-            st.error(f"Error fetching PMID from users table: {e}")
+            st.error(f"Error fetching PMID from backend: {e}")
 
     # If PMID is not found anywhere
-    if(redir):
+    if redir:
         st.set_option("client.showSidebarNavigation", True)
         st.switch_page("pages/2_pick_paper.py")
         st.stop()
-    
+
     return None
 
 def get_selected_paper(cookies : CookieManager):
@@ -105,15 +107,80 @@ def get_selected_paper(cookies : CookieManager):
 
     # If not found, return None
     return None
-     
 
 def handle_redirects(cookies : CookieManager):
     # Check cookies for session state
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = cookies.get("logged_in", False)
-    if "userID" not in st.session_state:
-        st.session_state["userID"] = cookies.get("userID", None)
+    if "userKey" not in st.session_state:
+        st.session_state["userKey"] = cookies.get("userKey", None)
 
     if not st.session_state.logged_in:
         st.set_option("client.showSidebarNavigation", False)
         st.switch_page("login.py")
+
+# Helper to get token
+def get_token(cookies : CookieManager):
+    return cookies.get("token") or st.session_state.get("token")
+
+# Helper to get user key
+def get_user_key(cookies : CookieManager):
+    return st.session_state.get("userKey") or cookies.get("userKey")
+
+# -- Paper picker helper functions --
+
+@st.cache_data
+def load_paper_metadata(_cookies, papers_completed, papers_abandoned):
+    token = get_token(_cookies)
+    if not token:
+        st.error("Not authenticated. Please log in again.")
+        st.stop()
+    success, papers = fetch_all_papers(token)
+    if not success:
+        st.error(papers)
+        st.stop()
+    result = []
+    for paper in papers:
+        pmid = paper.get("PMID")
+        if pmid and (pmid in papers_completed or pmid in papers_abandoned):
+            continue  # Skip papers that are already completed or abandoned
+
+        # Authors: handle as string or list
+        authors = paper.get("Authors", [])
+        if isinstance(authors, list):
+            authors_str = ", ".join(authors)
+        else:
+            authors_str = str(authors)
+
+        # Journal, Issue, Volume, Pages
+        journal = paper.get("Journal", None)
+        issue = paper.get("Issue", None)
+        volume = paper.get("Volume", None)
+        pages = paper.get('Pages')
+
+        result.append({
+            "title": paper.get("Title", ""),
+            "authors": authors_str,
+            "journal": journal,
+            "issue": issue,
+            "volume": volume,
+            "pages": pages,
+            "year": paper.get("Year", "?"),
+            "doi": paper.get("DOI_URL", ""),
+            "link": paper.get("DOI_URL", ""),
+            "filename": pmid,
+            "pmid": pmid
+        })
+    return result
+
+# Function to refresh paper list
+def refresh_paper_list(all_papers):
+    num_to_select = min(5, len(all_papers))
+    if num_to_select < 5:
+        st.warning("Not enough papers available to display 5 options.")
+    st.session_state.paper_choices = random.sample(all_papers, k=num_to_select)
+    st.session_state.selected_option = None
+    # Clear checkbox states
+    for k in ["a", "b", "c", "d", "e"]:
+        if k in st.session_state:
+            del st.session_state[k]

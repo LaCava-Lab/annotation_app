@@ -1,10 +1,8 @@
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
-from src.various import get_pmid, handle_redirects
+from src.various import handle_redirects, get_user_key, get_token
 from process_interchange import thanks
-import pandas as pd
-import json
-import os
+from src.database import fetch_user_info, fetch_paper_info
 
 # Set page configuration
 st.set_page_config(page_title="Thank You", layout="wide", initial_sidebar_state="collapsed")
@@ -14,7 +12,6 @@ cookies = CookieManager(prefix="annotation_app_")
 if not cookies.ready():
     st.stop()
 
-# Handle redirects if necessary
 handle_redirects(cookies)
 
 # Fetch the PMID of the paper from completed_paper session state or cookies
@@ -22,44 +19,29 @@ pmid = cookies.get("completed_paper") or st.session_state.get("completed_paper")
 if not pmid:
     st.switch_page("pages/2_pick_paper.py")
 
-# Path to folder with JSON papers
-JSON_FOLDER = "Full_text_jsons"
+# Get user info
+user_key = get_user_key(cookies)
+token = get_token(cookies)
+if not user_key or not token:
+    st.error("Not authenticated. Please log in again.")
+    st.stop()
 
-# Path to the users table
-USERS_TABLE_PATH =  r"AWS_S3/users_table.xlsx" 
+success, user_info = fetch_user_info(user_key, token)
+if not success:
+    st.error(user_info)
+    st.stop()
 
-# Load the users table
-users_df = pd.read_excel(USERS_TABLE_PATH)
+papers_completed = len(user_info.get("CompletedPMIDs", []) or [])
+# TO BE ADDRESSED - EXPERIMENTS AND SOLUTIONS ANNOTATED REQUIRES MORE DATA SAVED IN BACKEND
+experiments_annotated = user_info.get("ExperimentsAnnotated", 0)
+solutions_annotated = user_info.get("SolutionsAnnotated", 0)
 
-# Get the current user's completed papers
-current_user_id = st.session_state.get("userID")
-if current_user_id:
-    user_row = users_df[users_df["userID"] == current_user_id]
-    if not user_row.empty:
-        papers_completed = len(eval(user_row["Papers completed"].values[0]))
-    else:
-        papers_completed = 0
+# Get the paper title
+success, paper_info = fetch_paper_info(pmid, token)
+if success and paper_info and "Title" in paper_info:
+    paper_name = f"<i>{paper_info['Title']}</i>"
 else:
-    papers_completed = 0
-
-# Load the paper metadata to get the paper name
-def get_paper_name(pmid):
-    for filename in os.listdir(JSON_FOLDER):
-        if filename.endswith(".json"):
-            with open(os.path.join(JSON_FOLDER, filename), "r", encoding="utf-8") as f:
-                raw = json.load(f)
-                doc = raw[0]["documents"][0]
-                front = doc["passages"][0]  # front matter
-                meta = front["infons"]
-                if meta.get("article-id_pmid") == pmid:
-                    return front["text"]  # Return the paper title
-    return None
-
-paper_name = get_paper_name(pmid)
-
-# Set experiments and solutions annotated to 0 for now
-experiments_annotated = 0
-solutions_annotated = 0
+    paper_name = f"<i>{pmid}</i>"
 
 body = thanks["body"]
 
@@ -85,7 +67,6 @@ body_html = f"""
 """
 
 st.markdown(body_html, unsafe_allow_html=True)
-
 
 col1, col2, col3 = st.columns([3, 2, 3])
 with col2:

@@ -61,7 +61,45 @@
             "title": "Browse Paper"
         },
         "4_question_cascade": {
-            "title": "Question Cascade"
+            "title": "Question Cascade",
+            "description": "Use the link to the full-text paper to scan through it and then answer the quick questionnaire below. In this stage, you can go back through the \"Pick another\" button and change the paper as many times as you want. You will be allowed to abandon a \"Confirmed Paper\" later only twice. If you are happy with your selection, press \"Confirm paper\" to proceed to annotating your current selection.",
+            "go_to_fulltext": "Go to full-text paper",
+            "doi_warning": "DOI link not available for this paper.",
+            "questionnaire_title": "### Questionnaire",
+            "questions": [
+                {
+                    "label": "1. Is the paper describing wet lab experiments that aim to understand protein interactions?",
+                    "type": "radio",
+                    "options": ["YES", "NO"]
+                },
+                {
+                    "label": "1a. What is the main method the authors use to understand protein interactions?",
+                    "type": "text_input",
+                    "placeholder": "Enter the main method here"
+                },
+                {
+                    "label": "1b. Is this method preserving protein interactions in a cell-free system (e.g., whole cell extracts)?",
+                    "type": "radio",
+                    "options": ["YES", "NO"]
+                },
+                {
+                    "label": "1c. Is this method using any type of cross-linking to preserve protein interactions?",
+                    "type": "radio",
+                    "options": ["YES", "NO"]
+                },
+                {
+                    "label": "2. What is your level of familiarity with the topic of this paper?",
+                    "type": "selectbox",
+                    "options": ["Basic", "Course", "MSc research", "PhD field", "PhD research", "Expert"]
+                },
+                {
+                    "label": "3. What is your level of familiarity with the methods and experiments in this paper?",
+                    "type": "selectbox",
+                    "options": ["Basic", "Course", "MSc research", "PhD field", "PhD research", "Expert"]
+                }
+            ],
+            "pick_another": "Pick another paper",
+            "confirm_paper": "Confirm paper"
         },
         "5_detail_picker": {
             "title": "Paper Annotation",
@@ -88,7 +126,7 @@
         "7_thanks": {
             "title": "Thank you!",
             "body": {
-                "completed": "You completed annotation of the paper: <b>{paper_name}</b>.",
+                "completed": "You completed annotation of the paper: <b>{paper_name}</b>",
                 "stats": "You have completed in total <b>{papers_completed}</b> papers, annotated <b>{experiments_annotated}</b> experiments, and <b>{solutions_annotated}</b> solutions!",
                 "cta": "To start annotating another paper, click the button below and have another go!"
             }
