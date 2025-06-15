@@ -19,7 +19,7 @@ pmid = cookies.get("completed_paper") or st.session_state.get("completed_paper")
 if not pmid:
     st.switch_page("pages/2_pick_paper.py")
 
-# Get user info and stats
+# Get user info
 user_key = get_user_key(cookies)
 token = get_token(cookies)
 if not user_key or not token:

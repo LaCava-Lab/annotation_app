@@ -1,7 +1,6 @@
 import streamlit as st
-import random
 from process_interchange import pick_paper
-from src.various import get_pmid, handle_redirects, get_token, get_user_key
+from src.various import get_pmid, handle_redirects, get_token, get_user_key, load_paper_metadata, refresh_paper_list
 from streamlit_cookies_manager import CookieManager
 from src.database import fetch_user_info, fetch_all_papers
 
@@ -36,70 +35,13 @@ if not success:
 papers_completed = user_info.get("CompletedPMIDs", []) or []
 papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
 
-# Loads the metadata from backend via HTTP
-@st.cache_data
-def load_paper_metadata():
-    token = get_token(cookies)
-    if not token:
-        st.error("Not authenticated. Please log in again.")
-        st.stop()
-    success, papers = fetch_all_papers(token)
-    if not success:
-        st.error(papers)
-        st.stop()
-    result = []
-    for paper in papers:
-        pmid = paper.get("PMID")
-        if pmid and (pmid in papers_completed or pmid in papers_abandoned):
-            continue  # Skip papers that are already completed or abandoned
-
-        # Authors: handle as string or list
-        authors = paper.get("Authors", [])
-        if isinstance(authors, list):
-            authors_str = ", ".join(authors)
-        else:
-            authors_str = str(authors)
-
-        # Journal, Issue, Volume, Pages
-        journal = paper.get("Journal", None)
-        issue = paper.get("Issue", None)
-        volume = paper.get("Volume", None)
-        pages = paper.get('Pages')
-
-        result.append({
-            "title": paper.get("Title", ""),
-            "authors": authors_str,
-            "journal": journal,
-            "issue": issue,
-            "volume": volume,
-            "pages": pages,
-            "year": paper.get("Year", "?"),
-            "doi": paper.get("DOI_URL", ""),
-            "link": paper.get("DOI_URL", ""),
-            "filename": pmid,
-            "pmid": pmid
-        })
-    return result
-
 st.markdown(pick_paper["detail"])
 
-all_papers = load_paper_metadata()
-
-# Function to refresh paper list
-def refresh_paper_list():
-    num_to_select = min(5, len(all_papers))
-    if num_to_select < 5:
-        st.warning("Not enough papers available to display 5 options.")
-    st.session_state.paper_choices = random.sample(all_papers, k=num_to_select)
-    st.session_state.selected_option = None
-    # Clear checkbox states
-    for k in ["a", "b", "c", "d", "e"]:
-        if k in st.session_state:
-            del st.session_state[k]
+all_papers = load_paper_metadata(cookies, papers_completed, papers_abandoned)
 
 # Initialize session state for paper choices
 if "paper_choices" not in st.session_state:
-    refresh_paper_list()
+    refresh_paper_list(all_papers)
 
 # Initialize session state for selected option
 def select(option, key):
@@ -167,4 +109,9 @@ with col2:
         st.switch_page(pick_paper["buttons"][0]["page_link"])
         
 with col3:
-    st.button(pick_paper["buttons"][1]["text"], type="secondary", key="refresh_button", on_click=refresh_paper_list)
+    st.button(
+        pick_paper["buttons"][1]["text"],
+        type="secondary",
+        key="refresh_button",
+        on_click=lambda: refresh_paper_list(all_papers)
+    )

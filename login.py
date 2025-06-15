@@ -6,7 +6,7 @@ st.set_option("client.showSidebarNavigation", False)
 
 from src.various import get_pmid
 from streamlit_cookies_manager import CookieManager
-from src.database import login_user, signup_user  # Import your backend functions
+from src.database import login_user, signup_user
 
 # Initialize the cookie manager
 cookies = CookieManager(prefix="annotation_app_")

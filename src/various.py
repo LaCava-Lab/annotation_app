@@ -1,12 +1,8 @@
 from streamlit_cookies_manager import CookieManager
 import streamlit as st
 import pandas as pd
-
-# Path to folder with JSON papers
-JSON_FOLDER = "Full_text_jsons"
-
-# Path to the users table
-USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
+import random
+from src.database import fetch_all_papers
 
 def evaluate_userID_format(userid):
     if not userid.isdigit():
@@ -81,7 +77,6 @@ def get_pmid(cookies: CookieManager, redir: bool = True) -> str:
             if resp.status_code == 200:
                 user = resp.json()
                 pmid_from_db = user.get("CurrentPMID")
-                print(f"PMID from backend: {pmid_from_db}")
                 if pmid_from_db:
                     st.session_state["paper_in_progress"] = pmid_from_db
                     cookies["paper_in_progress"] = pmid_from_db
@@ -131,3 +126,61 @@ def get_token(cookies : CookieManager):
 # Helper to get user key
 def get_user_key(cookies : CookieManager):
     return st.session_state.get("userKey") or cookies.get("userKey")
+
+# -- Paper picker helper functions --
+
+@st.cache_data
+def load_paper_metadata(_cookies, papers_completed, papers_abandoned):
+    token = get_token(_cookies)
+    if not token:
+        st.error("Not authenticated. Please log in again.")
+        st.stop()
+    success, papers = fetch_all_papers(token)
+    if not success:
+        st.error(papers)
+        st.stop()
+    result = []
+    for paper in papers:
+        pmid = paper.get("PMID")
+        if pmid and (pmid in papers_completed or pmid in papers_abandoned):
+            continue  # Skip papers that are already completed or abandoned
+
+        # Authors: handle as string or list
+        authors = paper.get("Authors", [])
+        if isinstance(authors, list):
+            authors_str = ", ".join(authors)
+        else:
+            authors_str = str(authors)
+
+        # Journal, Issue, Volume, Pages
+        journal = paper.get("Journal", None)
+        issue = paper.get("Issue", None)
+        volume = paper.get("Volume", None)
+        pages = paper.get('Pages')
+
+        result.append({
+            "title": paper.get("Title", ""),
+            "authors": authors_str,
+            "journal": journal,
+            "issue": issue,
+            "volume": volume,
+            "pages": pages,
+            "year": paper.get("Year", "?"),
+            "doi": paper.get("DOI_URL", ""),
+            "link": paper.get("DOI_URL", ""),
+            "filename": pmid,
+            "pmid": pmid
+        })
+    return result
+
+# Function to refresh paper list
+def refresh_paper_list(all_papers):
+    num_to_select = min(5, len(all_papers))
+    if num_to_select < 5:
+        st.warning("Not enough papers available to display 5 options.")
+    st.session_state.paper_choices = random.sample(all_papers, k=num_to_select)
+    st.session_state.selected_option = None
+    # Clear checkbox states
+    for k in ["a", "b", "c", "d", "e"]:
+        if k in st.session_state:
+            del st.session_state[k]

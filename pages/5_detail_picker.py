@@ -76,6 +76,7 @@ if not pmid:
     st.error("No paper in progress. Please pick a paper to annotate.")
     st.switch_page("pages/2_pick_paper.py")
 
+# Normalizing tab names to full section names
 def normalize_section_name(section):
     s = section.strip().upper()
     if "INTRO" in s:
@@ -162,7 +163,7 @@ def get_tab_body(tab_name):
         elif t == "title_2":
             lines.append(f"## {text}")  # Second largest heading
         elif t == "title":
-            lines.append(f"### {text}")  # Third largest heading (if you have this type)
+            lines.append(f"### {text}")  # Third largest heading
         else:
             lines.append(text)
     return "\n\n".join(lines) if lines else "No content available for this section."
