@@ -1,6 +1,7 @@
 import streamlit as st
 import uuid
 import pandas as pd
+import numpy as np
 import json
 import os
 from streamlit_cookies_manager import CookieManager
@@ -9,6 +10,7 @@ from st_components.TableSelect import TableSelect
 from process_interchange import detail_picker
 from src.various import get_pmid, handle_redirects
 from st_components.BreadCrumbs import BreadCrumbs
+from subpage import Subpage
 
 # Set page config
 st.set_page_config(initial_sidebar_state="expanded", page_title="Paper Annotation", layout="wide")
@@ -646,3 +648,56 @@ def render_sidebar():
 # Render sidebar and highlighter everywhere except coffee breaks
 if "Coffee Break" not in st.session_state.current_page["page"]["label"]:
     render_sidebar()
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# print(st.session_state)
+#
+# # Extract to a plain dict
+# plain_state = dict(st.session_state)
+#
+# # Build a new dict with only JSON-serializable values
+# serializable_state = {}
+# for k, v in plain_state.items():
+#     # Pandas DataFrame → list of records
+#     if isinstance(v, pd.DataFrame):
+#         serializable_state[k] = v.to_dict(orient="records")
+#     #  NumPy arrays → lists
+#     elif isinstance(v, np.ndarray):
+#         serializable_state[k] = v.tolist()
+#     #  NumPy scalars → native Python types
+#     elif isinstance(v, (np.integer, np.floating, np.bool_)):
+#         serializable_state[k] = v.item()
+#     # Anything else that’s already JSON-safe
+#     elif isinstance(v, (str, int, float, bool, list, dict, type(None))):
+#         serializable_state[k] = v
+#     # Fallback: stringify
+#     else:
+#         serializable_state[k] = str(v)
+#
+# # Dump to JSON
+# with open("sessionstate.json", "w") as f:
+#     json.dump(serializable_state, f, indent=2)
+#
+# def default_serializer(o):
+#     # DataFrame to dict
+#     if hasattr(o, "to_dict"):
+#         return o.to_dict(orient="records")
+#     # NumPy to list or Python scalar
+#     if isinstance(o, np.ndarray):
+#         return o.tolist()
+#     if isinstance(o, (np.integer, np.floating, np.bool_)):
+#         return o.item()
+#     # Fallback
+#     return str(o)
+#
+# plain_state = dict(st.session_state)
+# json_text = json.dumps(plain_state, indent=2, default=default_serializer)
+# with open("sessionstate.json", "w") as f:
+#     f.write(json_text)
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+

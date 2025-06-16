@@ -9,6 +9,7 @@ function MyComponent({args, disabled, theme}: ComponentProps): ReactElement {
 
   const {links, activeLink,pages} = args
   const [active_link, setActiveLink] = useState("");
+  console.log(links,active_link,pages)
 
   useEffect(() => {
     Streamlit.setFrameHeight()
