@@ -23,3 +23,143 @@ GET http://localhost:3000/papers
 POST http://localhost:3000/auth/logout
 ###
 GET http://localhost:3000/fulltext?filename=PMC10546312
+###
+GET http://localhost:3000/sessions/session123
+###
+POST http://localhost:3000/sessions
+Content-Type: application/json
+
+{
+  "SessionID": "session123",
+  "userID": 1,
+  "PMID": "PMID12345",
+  "SessionStatus": "open",
+  "json_state": "{}"
+}
+
+###
+GET http://localhost:3000/experiments
+
+### 
+POST http://localhost:3000/experiments
+Content-Type: application/json
+
+[
+  {
+    "ExperimentID": "exp001",
+    "SessionID": "session123",
+    "name": "Experiment A",
+    "name_section": "Methods",
+    "name_start": 10,
+    "name_end": 50,
+    "name_alt": "Alt Experiment A",
+    "type": "PI"
+  }
+]
+
+### 
+GET http://localhost:3000/solutions
+
+###
+POST http://localhost:3000/solutions
+Content-Type: application/json
+
+[
+  {
+    "SolutionID": "sol001",
+    "ExperimentID": "exp001",
+    "name": "Solution X",
+    "name_section": "Methods",
+    "name_start": 5,
+    "name_end": 30,
+    "name_alt": "Alt Solution X",
+    "type": "PI",
+    "temp": "37C",
+    "time": "2h",
+    "ph": 7
+  }
+]
+
+###
+GET http://localhost:3000/baits
+
+###
+POST http://localhost:3000/baits
+Content-Type: application/json
+
+[
+  {
+    "BaitID": "bait001",
+    "ExperimentID": "exp001",
+    "name": "Bait X",
+    "name_section": "Intro",
+    "name_start": 3,
+    "name_end": 20,
+    "name_alt": "Alt Bait",
+    "species_name": "Homo sapiens",
+    "species_name_section": "Intro",
+    "species_name_start": 21,
+    "species_name_end": 35,
+    "species_name_alt": "Alt Species",
+    "isControl": "No",
+    "bait_type": "protein"
+  }
+]
+
+###
+GET http://localhost:3000/interactors
+
+###
+POST http://localhost:3000/interactors
+Content-Type: application/json
+
+[
+  {
+    "InteractorID": "inter001",
+    "BaitID": "bait001",
+    "ExperimentID": "exp001",
+    "name": "Interactor X",
+    "name_section": "Results",
+    "name_start": 11,
+    "name_end": 40,
+    "name_alt": "Alt Interactor",
+    "species_name": "Mus musculus",
+    "species_name_section": "Results",
+    "species_name_start": 41,
+    "species_name_end": 60,
+    "species_name_alt": "Alt Species",
+    "type": "RNA"
+  }
+]
+
+###
+GET http://localhost:3000/chemistrys
+
+###
+POST http://localhost:3000/chemistrys
+Content-Type: application/json
+
+[
+  {
+    "ChemistryID": "chem001",
+    "SolutionID": "sol001",
+    "name": "Chem A",
+    "name_section": "Methods",
+    "name_start": 1,
+    "name_end": 15,
+    "name_alt": "Alt Chem",
+    "concentration_name": "10mM",
+    "concentration_name_section": "Methods",
+    "concentration_name_start": 16,
+    "concentration_name_end": 20,
+    "concentration_name_alt": "Alt Conc",
+    "unit_name": "mM",
+    "unit_name_section": "Methods",
+    "unit_name_start": 21,
+    "unit_name_end": 23,
+    "unit_name_alt": "Alt Unit",
+    "type": "DNA"
+  }
+]
+
+
