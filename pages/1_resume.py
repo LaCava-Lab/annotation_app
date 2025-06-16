@@ -40,7 +40,7 @@ if pmid:
     else:
         paper_title = f"<i>{pmid}</i>"
 else:
-    paper_title = "<i>No paper in progress</i>"
+    st.switch_page("pages/2_pick_paper.py")
 
 # Dummy values for protocols/solutions/annotated (REPLACE WITH ACTUAL DATA)
 protocols = "N"
