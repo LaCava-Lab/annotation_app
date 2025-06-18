@@ -233,11 +233,12 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[1]
               ("non-PI experiment", "#F25757")]
     st.session_state["cards"][1] = displayTextHighlighter(labels, 1)
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]["label"]:
+
     st.markdown("""
-<style>
-[data-testid="stSidebar"] {display: none;}
-.block-container {padding-top: 4rem;}
-</style>
+        <style>
+        [data-testid="stSidebar"] {display: none;}
+        .block-container {padding-top: 4rem;}
+        </style>
         """, unsafe_allow_html=True)
 
     coffee_break_a = interchange["pages"]["5_detail_picker"]["coffee_break_a"]
@@ -302,11 +303,14 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]
     if corrected:
         st.error("Solution Type was set to 'non-PI' for rows where Experiment Type is 'non-PI'.")
 
-    col1, col2 = st.columns([1, 2])
-    with col1:
+    col_prev, col_save, col_save_next = st.columns([1, 1, 2])
+    with col_prev:
+        if st.button("Prev", use_container_width=True):
+            prev()
+    with col_save:
         if st.button("Save", use_container_width=True):
             save()
-    with col2:
+    with col_save_next:
         if st.button("Save & next", use_container_width=True):
             save()
             next()
@@ -319,11 +323,17 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[3]
     ]
     st.session_state["cards"][2] = displayTextHighlighter(labels, 2)
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]["label"]:
+
+    col1, col2, col3 = st.columns([2, 1, 2])
+    with col2:
+        if st.button("Prev"):
+            prev()
+
     st.markdown("""
-<style>
-[data-testid="stSidebar"] {display: none;}
-.block-container {padding-top: 4rem;}
-</style>
+        <style>
+        [data-testid="stSidebar"] {display: none;}
+        .block-container {padding-top: 4rem;}
+        </style>
         """, unsafe_allow_html=True)
 
     coffee_break_b = interchange["pages"]["5_detail_picker"]["coffee_break_b"]
@@ -397,15 +407,17 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]
         }
     )
 
-    col1, col2 = st.columns([1, 2])
-    with col1:
+    col_prev, col_save, col_save_next = st.columns([1, 1, 2])
+    with col_prev:
+        if st.button("Prev", use_container_width=True):
+            prev()
+    with col_save:
         if st.button("Save", use_container_width=True):
             save()
-    with col2:
+    with col_save_next:
         if st.button("Save & next", use_container_width=True):
             save()
             next()
-    save_state_to_cookies()
 
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[5]["label"]:
     st.title(st.session_state.links[5]["label"])
@@ -420,10 +432,10 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[5]
     st.session_state["cards"][3] = displayTextHighlighter(labels, 3)
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[6]["label"]:
     st.markdown("""
-<style>
-[data-testid="stSidebar"] {display: none;}
-.block-container {padding-top: 4rem;}
-</style>
+        <style>
+        [data-testid="stSidebar"] {display: none;}
+        .block-container {padding-top: 4rem;}
+        </style>
         """, unsafe_allow_html=True)
 
     coffee_break_c = interchange["pages"]["5_detail_picker"]["coffee_break_c"]

@@ -35,7 +35,10 @@ if not success:
 papers_completed = user_info.get("CompletedPMIDs", []) or []
 papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
 
-st.markdown(pick_paper["detail"])
+st.markdown(
+    f"<div style='font-size:1.3em; margin-top: -0.8em; padding-bottom:32px'>{pick_paper['detail']}</div>",
+    unsafe_allow_html=True
+)
 
 all_papers = load_paper_metadata(cookies, papers_completed, papers_abandoned)
 
@@ -57,8 +60,8 @@ def select(option, key):
 for i, paper in enumerate(st.session_state.paper_choices):
     key = chr(ord("a") + i)
     label = (
-        f"**{paper['authors']}**, "
-        f"*{paper['title']}* "
+        f"*{paper['authors']}*, "
+        f"**{paper['title']}** "
         f"({paper['year']})\n\n"
     )
 
