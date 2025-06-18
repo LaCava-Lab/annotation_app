@@ -7,9 +7,9 @@ import React, { useCallback, useEffect, useMemo, useState, ReactElement, CSSProp
 
 function MyComponent({args, disabled, theme}: ComponentProps): ReactElement {
 
-  const {links, activeLink,pages} = args
+  const {activeLink,pages} = args
   const [active_link, setActiveLink] = useState("");
-  console.log(links,active_link,pages)
+//  console.log(activeLink,pages)
 
   useEffect(() => {
     Streamlit.setFrameHeight()
@@ -18,11 +18,13 @@ function MyComponent({args, disabled, theme}: ComponentProps): ReactElement {
       setActiveLink(activeLink.label);
   }, [])
 
-  const editClassLink = (label : string) : string => {
+  const editClassLink = (label : string, coffee_break_display: boolean) : string => {
     const classDefault : string = "a a-default"
     const classActive : string = "a a-active"
 
-    if(active_link === label){
+    if (label === "Coffee Break"){
+      return classActive
+    }else if(active_link === label && !coffee_break_display){
       return classActive
     }else return classDefault
   }
@@ -44,10 +46,10 @@ function MyComponent({args, disabled, theme}: ComponentProps): ReactElement {
     }
   };
 
-  const link = ({ label }: { label: string }) : ReactElement => {
+  const page = ({ label, coffee_break_display }: { label: string, coffee_break_display: boolean }) : ReactElement => {
     return (
       <li key={label} onClick={() => getLink(label)} className={editClassLi(label)}>
-        <a key={"a-"+label} className={editClassLink(label)} tabIndex={-1} role="button" aria-disabled="true">{label}</a>
+        <a key={"a-"+label} className={editClassLink(label, coffee_break_display)} tabIndex={-1} role="button" aria-disabled="true">{label}</a>
       </li>
     )
   }
@@ -71,7 +73,31 @@ function MyComponent({args, disabled, theme}: ComponentProps): ReactElement {
     <span>
       <nav aria-label="breadcrumb">
         <ol className="breadcrumb">
-          {links.map(link)}
+          {
+            (() => {
+              const visiblePages = [];
+
+              const activePageIndex = activeLink.index;
+              const activePage = pages.find((p:any) => p.index === activePageIndex);
+
+              const stopAfterActivePage =
+                activePage?.coffee_break === true &&
+                activePage?.coffee_break_display === true;
+
+              for (const p of pages) {
+                if (p.index > activePageIndex && p.coffee_break && p.coffee_break_display) break;
+
+                visiblePages.push(page(p));
+
+                if (stopAfterActivePage && p.index === activePageIndex) {
+                  visiblePages.push(page({label: "Coffee Break", coffee_break_display: false}));
+                  break;
+                }
+              }
+
+              return visiblePages;
+            })()
+          }
         </ol>
       </nav>
     </span>

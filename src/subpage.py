@@ -1,14 +1,18 @@
 import uuid
+import pandas as pd
 import streamlit as st
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
+from process_interchange import detail_picker
 
 class Subpage:
-    def __init__(self, label, doi_link, paper_data,sidebar_content,selections ,highlighter_labels,coffee_break):
+    def __init__(self, index, label, doi_link, paper_data,sidebar_content,selections ,highlighter_labels,coffee_break,coffee_break_display):
+        self.index = index
         self.label = label
         self.doi_link = doi_link
         self.sidebar_content = sidebar_content
         self.coffee_break = coffee_break
+        self.coffee_break_display = coffee_break_display
         self.paper_data = paper_data
         self.highlighter_labels = highlighter_labels
         self.selections = selections
@@ -63,7 +67,7 @@ class Subpage:
                 self.active_experiment = TableSelect(header, flat_list, 2, key=f"table_select_{self.label}_{a}")
                 self.active_experiment["solutions"] = flat_solutions
                 a = len(flat_solutions)
-                print(self.active_experiment)
+                # print(self.active_experiment)
                 if self.active_experiment.get("type") == "non-PI":
                     return "non-PI"
                 else:
@@ -96,9 +100,24 @@ class Subpage:
             </div>
         """, unsafe_allow_html=True)
 
-    def main_page(self,tab_names):
-        st.title(self.label)
-        self.displayTextHighlighter(self.highlighter_labels, tab_names)
+    def main_page(self,tab_names=None):
+        if not self.coffee_break_display:
+            st.title(self.label)
+            self.displayTextHighlighter(self.highlighter_labels, tab_names)
+        else:
+            # Hide sidebar with CSS
+            st.markdown("""
+                <style>
+                [data-testid="stSidebar"] {display: none;}
+                .block-container {padding-top: 4rem;}
+                </style>
+            """, unsafe_allow_html=True)
+
+            if self.index == 2:
+                self.display_coffee_break_1()
+            elif self.index == 3:
+                self.display_coffee_break_2()
+            else: self.display_coffee_break_3()
 
     @st.cache_data
     def get_tab_body(_self,tab_name):
@@ -127,4 +146,221 @@ class Subpage:
                 )
                 results.append(result)
         self.selections = results
+
+    def display_coffee_break_1(self):
+        # Fetch Coffee Break A text from interchange.json
+        coffee_break_a = detail_picker["coffee_break_a"]
+        st.title(detail_picker["title"])
+        st.markdown(f"#### {coffee_break_a['title']}")
+        st.write(coffee_break_a["body"])
+
+        if self.doi_link:
+            st.link_button("Go to full-text paper", self.doi_link)
+        else:
+            st.markdown("""
+                <div style="background-color:#ffdddd; color:#a94442; padding:10px 15px; border-left:6px solid #f44336; border-radius:4px; margin-bottom:15px;">
+                ⚠️ DOI link not available for this paper.
+                </div>
+            """, unsafe_allow_html=True)
+
+        # Editable table for experiments and solutions
+        exp_df = pd.DataFrame([
+            {
+                "Experiment name": "Immunoprecipitation",
+                "Alternative Experiment Name": "",
+                "Experiment Type": "PI",
+                "Solution name": "extraction solution",
+                "Alternative Solution Name": "",
+                "Solution Type": "PI"
+            }
+        ])
+
+        edited_df = st.data_editor(
+            exp_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "Experiment name": st.column_config.TextColumn("Experiment name", disabled=True),
+                "Alternative Experiment Name": st.column_config.TextColumn("Alternative Experiment Name"),
+                "Experiment Type": st.column_config.SelectboxColumn(
+                    "Experiment Type", options=["PI", "non-PI"]
+                ),
+                "Solution name": st.column_config.TextColumn("Solution name", disabled=True),
+                "Alternative Solution Name": st.column_config.TextColumn("Alternative Solution Name"),
+                "Solution Type": st.column_config.SelectboxColumn(
+                    "Solution Type", options=["PI", "non-PI"]
+                ),
+            },
+            key="exp_editor"
+        )
+
+        # Validate and correct Solution Type based on Experiment Type
+        corrected = False
+        for idx, row in edited_df.iterrows():
+            if row["Experiment Type"] == "non-PI" and row["Solution Type"] != "non-PI":
+                edited_df.at[idx, "Solution Type"] = "non-PI"
+                corrected = True
+
+        if corrected:
+            st.error("Solution Type was set to 'non-PI' for rows where Experiment Type is 'non-PI'.")
+    def display_coffee_break_2(self):
+        # Fetch Coffee Break B text from interchange.json
+        coffee_break_b = detail_picker["coffee_break_b"]
+        st.title(detail_picker["title"])
+        st.markdown(f"#### {coffee_break_b['title']}")
+        st.write(coffee_break_b["body"])
+
+        if self.doi_link:
+            st.link_button("Go to full-text paper", self.doi_link)
+        else:
+            st.markdown("""
+                <div style="background-color:#ffdddd; color:#a94442; padding:10px 15px; border-left:6px solid #f44336; border-radius:4px; margin-bottom:15px;">
+                ⚠️ DOI link not available for this paper.
+                </div>
+            """, unsafe_allow_html=True)
+
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            st.selectbox("Experiment", ["Experiment"], key="experiment_select")
+        with col2:
+            st.selectbox("Bait 1", ["Bait 1"], key="bait_select")
+        st.markdown("### Bait details:")
+
+        bait_df = pd.DataFrame([
+            {
+                "Bait type 1": "Protein",
+                "Bait type 2": "Experimental",
+                "Name": "ORF2p",
+                "Alt name": "",
+                "Tag": "N/A",
+                "Alt tag": "",
+                "Species": "HEK293T",
+                "Alt. species": "H.sapiens",
+            }
+        ])
+        st.data_editor(
+            bait_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="bait_editor",
+            column_config={
+                "Bait type 1": st.column_config.TextColumn("Bait type 1", disabled=True),
+                "Bait type 2": st.column_config.TextColumn("Bait type 2", disabled=True),
+                "Name": st.column_config.TextColumn("Name", disabled=True),
+                "Alt name": st.column_config.TextColumn("Alt name"),
+                "Tag": st.column_config.TextColumn("Tag"),
+                "Alt tag": st.column_config.TextColumn("Alt tag"),
+                "Species": st.column_config.TextColumn("Species"),
+                "Alt. species": st.column_config.TextColumn("Alt. species"),
+            }
+        )
+
+        st.markdown("### Interactor(s) details:")
+
+        interactor_df = pd.DataFrame([
+            {
+                "Bait ref": 1,
+                "Interactor type": "protein",
+                "Name": "",
+                "Alternative name": "N/A",
+                "Species": "HEK293T",
+                "Alternative species": "H.sapiens",
+            }
+        ])
+        st.data_editor(
+            interactor_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="interactor_editor",
+            column_config={
+                "Bait ref": st.column_config.TextColumn("Bait ref", disabled=True),
+                "Interactor type": st.column_config.TextColumn("Interactor type", disabled=True),
+                "Name": st.column_config.TextColumn("Name", disabled=True),
+                "Alternative name": st.column_config.TextColumn("Alternative name"),
+                "Species": st.column_config.TextColumn("Species"),
+                "Alternative species": st.column_config.TextColumn("Alternative species"),
+            }
+        )
+    def display_coffee_break_3(self):
+        # Fetch Coffee Break C text from interchange.json
+        coffee_break_c = detail_picker["coffee_break_c"]
+        st.title(detail_picker["title"])
+        st.markdown(f"#### {coffee_break_c['title']}")
+        st.write(coffee_break_c["body"])
+
+
+        if self.doi_link:
+            st.link_button("Go to full-text paper", self.doi_link)
+        else:
+            st.markdown("""
+                <div style="background-color:#ffdddd; color:#a94442; padding:10px 15px; border-left:6px solid #f44336; border-radius:4px; margin-bottom:15px;">
+                ⚠️ DOI link not available for this paper.
+                </div>
+            """, unsafe_allow_html=True)
+
+        # Dropdowns
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            experiment_type = st.selectbox("Experiment Type", ["PI", "non-PI"], key="exp_type_3")
+        with col2:
+            if experiment_type == "PI":
+                solution_type_options = ["PI", "non-PI"]
+            else:
+                solution_type_options = ["non-PI"]
+            solution_type = st.selectbox("Solution Type", solution_type_options, key="sol_type_3")
+
+        # pH, Temperature, Time
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
+        with col1:
+            st.text_input("pH", value="7.4")
+        with col2:
+            st.text_input("Temperature (°C)", value="4", key="temperature_input")
+        with col3:
+            st.selectbox(
+                "Time",
+                [
+                    "0–5 min", "5–10 min", "10–15 min", "15–30 min", "30–60 min",
+                    "1–2 h", "2–4 h", "4–8 h", "8–16 h"
+                ],
+                key="time_select"
+            )
+        # Radio buttons
+        st.radio(
+            "Solution details",  # Non-empty label for accessibility
+            ["Solution details not listed:", "Solution details listed:"],
+            index=1,
+            key="solution_details_radio",
+            label_visibility="collapsed"  # Hides the label visually
+        )
+
+        # Editable table for solution details
+        solution_df = pd.DataFrame([
+            {
+                "Chemical type": "Buffer",
+                "Name": "HEPES",
+                "Alternative name": "",
+                "Quantity": "20",
+                "Alternative Quantity": "",
+                "Unit": "mM",
+                "Alternative unit": ""
+            }
+        ])
+        st.data_editor(
+            solution_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="solution_editor",
+            column_config={
+                "Chemical type": st.column_config.SelectboxColumn(
+                    "Chemical type",
+                    options=[
+                        "Buffer", "Salt", "Detergent", "Enzyme", "Inhibitor",
+                        "Reducing agent", "Substrate", "Other"
+                    ]
+                ),
+                "Name": st.column_config.TextColumn("Name", disabled=True),
+                "Quantity": st.column_config.TextColumn("Quantity", disabled=True),
+                "Unit": st.column_config.TextColumn("Unit", disabled=True),
+            }
+        )
 

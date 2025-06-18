@@ -1,22 +1,44 @@
-import streamlit as st
-import uuid
-import pandas as pd
-import numpy as np
-import json
 import os
-from streamlit_cookies_manager import CookieManager
-from text_highlighter import text_highlighter
-from st_components.TableSelect import TableSelect
-from process_interchange import detail_picker
-from src.various import get_pmid, handle_redirects
-from st_components.BreadCrumbs import BreadCrumbs
+import json
+import pandas as pd
+import streamlit as st
 from subpage import Subpage
+from src.various import get_pmid, handle_redirects
+from streamlit_cookies_manager import CookieManager
+from st_components.BreadCrumbs import BreadCrumbs
 
-# Set page config
+# CONFIG
 st.set_page_config(initial_sidebar_state="expanded", page_title="Paper Annotation", layout="wide")
 st.set_option("client.showSidebarNavigation", False)
+st.markdown("""
+    <style>
+        [data-testid="stSidebarCollapseButton"] {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            background-color: transparent;
+            }
+        [data-testid="stSidebarHeader"] {
+            height: 0px;
+            padding: 10px;
+        }
+        [data-testid="stSidebarNav"] {
+            display: none;
+        }
+        [data-testid="stSidebarUserContent"] {
+            padding-top: 0px;
+        }
+        [data-testid="stSidebarUserContent"] h1 {
+            padding-top: 0px;
+        }
+        [data-testid="stSidebar"] {
+            min-width: 370px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
-# Initialize the cookie manager
+# COOKIES
 cookies = CookieManager(prefix="annotation_app_")
 
 if not cookies.ready():
@@ -24,16 +46,14 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-# Path to the folder containing JSON files
-JSON_FOLDER = "Full_text_jsons"
+# PAPER INFO
+JSON_FOLDER = "Full_text_jsons" # Path to the folder containing JSON files
+USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx" # Path to the users table
+pmid = get_pmid(cookies) # Fetch the PMID
+doi_link = None # Initialize DOI link
+paper_data = None
+tab_names = None
 
-# Path to the users table
-USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx"
-
-with open("interchange.json", "r", encoding="utf-8") as f:
-    interchange = json.load(f)
-
-# Function to load the selected paper's JSON file based on the PMID
 def load_paper_by_pmid(pmid):
     for filename in os.listdir(JSON_FOLDER):
         if filename.endswith(".json"):
@@ -52,16 +72,10 @@ def load_paper_by_pmid(pmid):
     st.error(f"No JSON file found for PMID: {pmid}")
     st.stop()
 
-
-# Fetch the PMID
-pmid = get_pmid(cookies)
-
-# Load the selected paper's JSON file
-if "paper_data" not in st.session_state:
+if True: # Load the selected paper's JSON file
     raw = load_paper_by_pmid(pmid)
     doc = raw[0]["documents"][0]
     all_data = []
-    doi_link = None  # Initialize DOI link
     for passage in doc["passages"]:
         section_type = passage["infons"].get("section_type", "Unknown")
         text = passage.get("text", "")
@@ -76,504 +90,194 @@ if "paper_data" not in st.session_state:
     df = pd.DataFrame(all_data)
     # Filter out sections that do not need to be annotated
     df = df[~df["section_type"].isin(["TITLE", "REF", "SUPPL", "AUTH_CONT", "COMP_INT", "ACK_FUND"])]
-    st.session_state["paper_data"] = df
-    st.session_state["tab_names"] = df["section_type"].unique().tolist()  # Extract unique tab names
-    st.session_state["doi_link"] = doi_link  # Save the DOI link in session state
+    paper_data = df
+    tab_names = df["section_type"].unique().tolist()  # Extract unique tab names
 
-# Sidebar style
-st.markdown("""
-<style>
-[data-testid="stSidebar"] {
-min-width: 370px;
-}
-</style>
-<style>
-.block-container {
-padding-top: 4rem;
-}
-</style>
-    """, unsafe_allow_html=True)
-
-def colored_card(title, subtitle, bg_color="#1f77b4", text_color="#ffffff", key=None):
-    if key is None:
-        key = str(uuid.uuid4())  # Generate unique key if none provided
-
-    container_id = f"card-{key}"
-
-    st.markdown(f"""
-                <div id="{container_id}" style="
-                background: linear-gradient(135deg, {bg_color}, #333333);
-padding: 1.5rem;
-border-radius: 1.25rem;
-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                color: {text_color};
-font-family: 'Segoe UI', sans-serif;
-margin: 1rem 0;
-">
-<div style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.3rem;">
-                {title}
-</div>
-<div style="font-size: 1rem; font-weight: 400; opacity: 0.85;">
-                {subtitle}
-</div>
-</div>
-                """, unsafe_allow_html=True)
-
-
-# Functions to load paper text + labels
-@st.cache_data
-def get_tab_body(tab_name):
-    df = st.session_state["paper_data"]
-    tmp = df[df.section_type == tab_name]
-    return tmp['text'].str.cat(sep="\n\n") if not tmp.empty else "No content available for this section."
-
-
-if "pages" not in st.session_state:
-    st.session_state.links = [
-        {"label": "Experiment Picker"},
-        {"label": "Solution Picker"},
-        {"label": "Coffee Break A"},
-        {"label": "Experiment Details"},
-        {"label": "Coffee Break B"},
-        {"label": "Solution Details"},
-        {"label": "Coffee Break C"}
+# PAGES INFO
+if "subpages" not in st.session_state:
+    st.session_state.subpages = [
+        {"label": "Experiment Picker",
+         "sidebar_content": {
+             "subtitle": "Step 1/4 : Identify experiments (names)",
+             "description": "Identify all the experimental methods used in the paper and determine if they contain any steps that **preserve protein interactions (PIs) with any other type of molecule, in cell-free systems, without use of cross-linking**. We are not interested in identifying methods that are exclusively computational.",
+             "widget": "CARDS"
+         },
+         "selections": [],
+         "highlighter_labels":[
+             ("PI experiment", "#6290C3"),
+             ("non-PI experiment", "#F25757")
+         ],
+         "coffee_break": False,
+         "coffee_break_display": False,
+         "index": 1,
+         "visited": 0},
+        {"label": "Solution Picker",
+         "sidebar_content": {
+             "subtitle": "Step 2/4 : Identify solutions (names)",
+             "description": "For each of the laboratory experiments that you identified in the previous step, select the solution names used in distinct steps of the experimental protocol. If the solution is intended to **preserve protein interactions (PIs) with any other type of molecule, in cell-free systems, without use of cross-linking**, thet it should be classified as \"PI\", and as \"non-PI\" otherwise, like before. An experiment that has been labeled as \"non-PI\" cannot contain \"PI\" solutions, but the opposite is possible.",
+             "widget": "CARDS_SELECT"
+         },
+         "selections": [],
+         "experiments": {},
+         "highlighter_labels":[
+             ("PI experiment", "#6290C3"),
+             ("non-PI experiment", "#F25757")
+         ],
+         "coffee_break": True,
+         "coffee_break_display": False,
+         "index": 2,
+         "visited": 0},
+        {"label": "Experiment Details",
+         "sidebar_content": {
+             "subtitle": "Step 3/4 : Experiment details",
+             "description": "For each of the PI laboratory experiments that you identified in the first step, find the details we ask  below. For each selected question you will need to find the answer in the text of the paper (\"Select\" button). In the case the information is split in multiple locations in the paper, then you can append more text to your current selection by pressing the \"Add to selection\" button, repeating as many times as necessary. The \"Select\" button is reset when you move on to the next question.",
+             "widget": ""
+         },
+         "selections": [],
+         "highlighter_labels":[
+            ("Select", "#82645E"),
+         ],
+         "coffee_break": True,
+         "coffee_break_display": False,
+         "index": 3,
+         "visited": 0},
+        {"label": "Solution Details",
+         "sidebar_content": {
+             "subtitle": "Step 4/4 : Solution composition",
+             "description": "For each of the PI solutions that you identified in the second step, find their detailed composition in the text after selecting the right button for the type of chemical. If the composition of a solution used in the experiments is not described in detail but instead is offered as a reference to previous work, then select that reference in-text withe the corresponding button selected.",
+             "widget": ""
+         },
+         "selections": [],
+         "highlighter_labels":[
+             ("Buffer", "#F68E5F"),
+             ("pH", "#56876D"),
+             ("Salt", "#F9C784"),
+             ("Detergent", "#007FFF"),
+             ("Chelating", "#7D83FF"),
+             ("Other", "#8898AA"),
+         ],
+         "coffee_break": True,
+         "coffee_break_display": False,
+         "index": 4,
+         "visited": 0},
     ]
-    st.session_state.pages = [
-        {"index": i + 1, "label": link["label"], "visited": 0}
-        for i, link in enumerate(st.session_state.links)
-    ]
-    st.session_state.current_page = {"page": st.session_state.links[0], "index": 0}
-    st.session_state.pages[0]["visited"] = 1
+    st.session_state.current_page = {"subpage": st.session_state.subpages[0], "index": 0}
+    st.session_state.subpages[0]["visited"] = 1
 
-if "cards" not in st.session_state:
-    st.session_state["cards"] = [[], [], [], [],[],[],[]]
-if "active_solution_btn" not in st.session_state:
-    st.session_state["active_solution_btn"] = {}
+subpages_data = []
+for i,subpage in enumerate(st.session_state.subpages):
+    label = subpage["label"]
+    sidebar_content = subpage["sidebar_content"]
+    coffee_break = subpage["coffee_break"]
+    coffee_break_display = subpage["coffee_break_display"]
+    selections = subpage["selections"]
+    highlighter_labels = subpage["highlighter_labels"]
+    index = subpage["index"]
+
+    subpages_data.append(Subpage(index,label, doi_link, paper_data, sidebar_content, selections, highlighter_labels, coffee_break,coffee_break_display))
+
+    if "experiments" in subpage:
+        subpages_data[i].assign_experiments(subpage["experiments"])
+
+page = subpages_data[st.session_state.current_page["index"]]
 
 # func to change page
 def changePage(index):
     st.session_state.current_page = {
-        "page": st.session_state.links[index],
+        "subpage": st.session_state.subpages[index],
         "index": index
     }
-    st.session_state.pages[index]["visited"] = 1
+    st.session_state.subpages[index]["visited"] = 1
     st.rerun()
 
 def next():
-    if st.session_state.current_page["index"] < len(st.session_state.links) - 1:
-        changePage(st.session_state.current_page["index"] + 1)
+    if st.session_state.current_page["index"] <= len(st.session_state.subpages) - 1:
+        index = st.session_state.current_page["index"]
 
+        if st.session_state.subpages[index]["coffee_break"] and not st.session_state.subpages[index]["coffee_break_display"]:
+            st.session_state.subpages[index]["coffee_break_display"] = True
+            st.rerun()
+        elif st.session_state.subpages[index]["coffee_break"] and st.session_state.subpages[index]["coffee_break_display"]:
+            st.session_state.subpages[index]["coffee_break_display"] = False
+            if st.session_state.current_page["index"] < len(st.session_state.subpages) - 1:
+                changePage(index + 1)
+        else:
+            if st.session_state.current_page["index"] < len(st.session_state.subpages) - 1:
+                changePage(index + 1)
 
 def prev():
+    for page in st.session_state.subpages:
+        page["coffee_break_display"] = False
+
     if st.session_state.current_page["index"] > 0:
         changePage(st.session_state.current_page["index"] - 1)
 
 
 def save():
-    pass
+    index = st.session_state.current_page["index"]
 
+    #SAVE SELECTIONS
+    st.session_state.subpages[index]["selections"] = page.selections
 
-pageSelected = BreadCrumbs(st.session_state.links, st.session_state.current_page["page"], pages=st.session_state.pages)
-
-
-# for i, link in enumerate(st.session_state.links):
-#     if link["label"] == pageSelected:
-#         st.session_state.current_page = {
-#             "page": st.session_state.links[i],
-#             "index": i
-#         }
-#         break
-
-def check_tag(tag):
-    if 'non-PI' in tag:
-        return "non-PI"
-    else:
-        return "PI"
-
-doi_link = st.session_state.get("doi_link")
-def displayTextHighlighter(labels, index):
-    # Main app: Tabs + Highlighting
-    # Dynamically load tab names from session state
-    tab_names = st.session_state.get("tab_names", ["Unknown"])
-    tabs = st.tabs(tab_names)
-    results = []
-
-    for i, (name, tab) in enumerate(zip(tab_names, tabs)):
-        annotations = []
-        if (len(st.session_state["cards"][st.session_state.current_page["index"]]) > 0):
-            annotations = st.session_state["cards"][st.session_state.current_page["index"]][i]
-
-        # print(st.session_state["cards"][st.session_state.current_page["index"]][i],i)
-        with tab:
-            result = text_highlighter(
-                text=get_tab_body(name),
-                labels=labels,
-                text_height=400,
-                annotations=annotations,
-                key=f"text_highlighter_{name}_{index}"  # Assign a unique key for each tab
-            )
-
-            results.append(result)
-    return results
-
-
-if st.session_state.current_page["page"]["label"] == st.session_state.links[0]["label"]:
-    st.title(st.session_state.links[0]["label"])
-    labels = [
-        ("PI experiment", "#6290C3"),
-        ("non-PI experiment", "#F25757")
-    ]
-    st.session_state["cards"][0] = displayTextHighlighter(labels, 0)
-elif st.session_state.current_page["page"]["label"] == st.session_state.links[1]["label"]:
-    st.title(st.session_state.links[1]["label"])
-    labels = [("PI experiment", "#6290C3"),
-              ("non-PI experiment", "#F25757")]
-    # print(st.session_state["active_solution_btn"])
-    st.session_state["cards"][1] = displayTextHighlighter(labels, 1)
-elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]["label"]:
-    # Hide sidebar with CSS
-    st.markdown("""
-<style>
-[data-testid="stSidebar"] {display: none;}
-.block-container {padding-top: 4rem;}
-</style>
-        """, unsafe_allow_html=True)
-
-    # Fetch Coffee Break A text from interchange.json
-    coffee_break_a = interchange["pages"]["5_detail_picker"]["coffee_break_a"]
-    st.title(interchange["pages"]["5_detail_picker"]["title"])
-    st.markdown(f"#### {coffee_break_a['title']}")
-    st.write(coffee_break_a["body"])
-
-    if doi_link:
-        st.link_button("Go to full-text paper", doi_link)
-
-    # Editable table for experiments and solutions
-    exp_df = pd.DataFrame([
-        {
-            "Experiment name": "Immunoprecipitation",
-            "Alternative Experiment Name": "",
-            "Experiment Type": "PI",
-            "Solution name": "extraction solution",
-            "Alternative Solution Name": "",
-            "Solution Type": "PI"
-        }
-    ])
-
-    edited_df = st.data_editor(
-        exp_df,
-        num_rows="dynamic",
-        use_container_width=True,
-        column_config={
-            "Experiment name": st.column_config.TextColumn("Experiment name", disabled=True),
-            "Alternative Experiment Name": st.column_config.TextColumn("Alternative Experiment Name"),
-            "Experiment Type": st.column_config.SelectboxColumn(
-                "Experiment Type", options=["PI", "non-PI"]
-            ),
-            "Solution name": st.column_config.TextColumn("Solution name", disabled=True),
-            "Alternative Solution Name": st.column_config.TextColumn("Alternative Solution Name"),
-            "Solution Type": st.column_config.SelectboxColumn(
-                "Solution Type", options=["PI", "non-PI"]
-            ),
-        },
-        key="exp_editor"
-    )
-
-    # Validate and correct Solution Type based on Experiment Type
-    corrected = False
-    for idx, row in edited_df.iterrows():
-        if row["Experiment Type"] == "non-PI" and row["Solution Type"] != "non-PI":
-            edited_df.at[idx, "Solution Type"] = "non-PI"
-            corrected = True
-
-    if corrected:
-        st.error("Solution Type was set to 'non-PI' for rows where Experiment Type is 'non-PI'.")
-
-    # Save buttons for navigation
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        if st.button("Save", use_container_width=True):
-            save()
-    with col2:
-        if st.button("Save & next", use_container_width=True):
-            save()
-            next()
-elif st.session_state.current_page["page"]["label"] == st.session_state.links[3]["label"]:
-    st.title(st.session_state.links[3]["label"])
-    labels = [
-        ("Select", "#82645E"),
-    ]
-    st.session_state["cards"][2] = displayTextHighlighter(labels, 2)
-elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]["label"]:
-    # Hide sidebar with CSS
-    st.markdown("""
-<style>
-[data-testid="stSidebar"] {display: none;}
-.block-container {padding-top: 4rem;}
-</style>
-        """, unsafe_allow_html=True)
-
-    # Fetch Coffee Break B text from interchange.json
-    coffee_break_b = interchange["pages"]["5_detail_picker"]["coffee_break_b"]
-    st.title(interchange["pages"]["5_detail_picker"]["title"])
-    st.markdown(f"#### {coffee_break_b['title']}")
-    st.write(coffee_break_b["body"])
-
-    if doi_link:
-        st.link_button("Go to full-text paper", doi_link)
-
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        st.selectbox("Experiment", ["Experiment"], key="experiment_select")
-    with col2:
-        st.selectbox("Bait 1", ["Bait 1"], key="bait_select")
-    st.markdown("### Bait details:")
-
-    bait_df = pd.DataFrame([
-        {
-            "Bait type 1": "Protein",
-            "Bait type 2": "Experimental",
-            "Name": "ORF2p",
-            "Alt name": "",
-            "Tag": "N/A",
-            "Alt tag": "",
-            "Species": "HEK293T",
-            "Alt. species": "H.sapiens",
-        }
-    ])
-    st.data_editor(
-        bait_df,
-        num_rows="dynamic",
-        use_container_width=True,
-        key="bait_editor",
-        column_config={
-            "Bait type 1": st.column_config.TextColumn("Bait type 1", disabled=True),
-            "Bait type 2": st.column_config.TextColumn("Bait type 2", disabled=True),
-            "Name": st.column_config.TextColumn("Name", disabled=True),
-            "Alt name": st.column_config.TextColumn("Alt name"),
-            "Tag": st.column_config.TextColumn("Tag"),
-            "Alt tag": st.column_config.TextColumn("Alt tag"),
-            "Species": st.column_config.TextColumn("Species"),
-            "Alt. species": st.column_config.TextColumn("Alt. species"),
-        }
-    )
-
-    st.markdown("### Interactor(s) details:")
-
-    interactor_df = pd.DataFrame([
-        {
-            "Bait ref": 1,
-            "Interactor type": "protein",
-            "Name": "",
-            "Alternative name": "N/A",
-            "Species": "HEK293T",
-            "Alternative species": "H.sapiens",
-        }
-    ])
-    st.data_editor(
-        interactor_df,
-        num_rows="dynamic",
-        use_container_width=True,
-        key="interactor_editor",
-        column_config={
-            "Bait ref": st.column_config.TextColumn("Bait ref", disabled=True),
-            "Interactor type": st.column_config.TextColumn("Interactor type", disabled=True),
-            "Name": st.column_config.TextColumn("Name", disabled=True),
-            "Alternative name": st.column_config.TextColumn("Alternative name"),
-            "Species": st.column_config.TextColumn("Species"),
-            "Alternative species": st.column_config.TextColumn("Alternative species"),
-        }
-    )
-
-    # Save buttons for navigation
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        if st.button("Save", use_container_width=True):
-            save()
-    with col2:
-        if st.button("Save & next", use_container_width=True):
-            save()
-            next()
-
-elif st.session_state.current_page["page"]["label"] == st.session_state.links[5]["label"]:
-    st.title(st.session_state.links[5]["label"])
-    labels = [
-        ("Buffer", "#F68E5F"),
-        ("pH", "#56876D"),
-        ("Salt", "#F9C784"),
-        ("Detergent", "#007FFF"),
-        ("Chelating", "#7D83FF"),
-        ("Other", "#8898AA"),
-    ]
-    st.session_state["cards"][3] = displayTextHighlighter(labels, 3)
-elif st.session_state.current_page["page"]["label"] == st.session_state.links[6]["label"]:
-    st.markdown("""
-<style>
-[data-testid="stSidebar"] {display: none;}
-.block-container {padding-top: 4rem;}
-</style>
-        """, unsafe_allow_html=True)
-
-    # Fetch Coffee Break C text from interchange.json
-    coffee_break_c = interchange["pages"]["5_detail_picker"]["coffee_break_c"]
-    st.title(interchange["pages"]["5_detail_picker"]["title"])
-    st.markdown(f"#### {coffee_break_c['title']}")
-    st.write(coffee_break_c["body"])
-
-
-    if doi_link:
-        st.link_button("Go to full-text paper", doi_link)
-
-    # Dropdowns
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        experiment_type = st.selectbox("Experiment Type", ["PI", "non-PI"], key="exp_type_3")
-    with col2:
-        if experiment_type == "PI":
-            solution_type_options = ["PI", "non-PI"]
-        else:
-            solution_type_options = ["non-PI"]
-        solution_type = st.selectbox("Solution Type", solution_type_options, key="sol_type_3")
-
-    # pH, Temperature, Time
-    col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
-    with col1:
-        st.text_input("pH", value="7.4")
-    with col2:
-        st.text_input("Temperature (°C)", value="4", key="temperature_input")
-    with col3:
-        st.selectbox(
-            "Time",
-            [
-                "0–5 min", "5–10 min", "10–15 min", "15–30 min", "30–60 min",
-                "1–2 h", "2–4 h", "4–8 h", "8–16 h"
-            ],
-            key="time_select"
-        )
-    # Radio buttons
-    st.radio(
-        "Solution details",  # Non-empty label for accessibility
-        ["Solution details not listed:", "Solution details listed:"],
-        index=1,
-        key="solution_details_radio",
-        label_visibility="collapsed"  # Hides the label visually
-    )
-
-    # Editable table for solution details
-    solution_df = pd.DataFrame([
-        {
-            "Chemical type": "Buffer",
-            "Name": "HEPES",
-            "Alternative name": "",
-            "Quantity": "20",
-            "Alternative Quantity": "",
-            "Unit": "mM",
-            "Alternative unit": ""
-        }
-    ])
-    st.data_editor(
-        solution_df,
-        num_rows="dynamic",
-        use_container_width=True,
-        key="solution_editor",
-        column_config={
-            "Chemical type": st.column_config.SelectboxColumn(
-                "Chemical type",
-                options=[
-                    "Buffer", "Salt", "Detergent", "Enzyme", "Inhibitor",
-                    "Reducing agent", "Substrate", "Other"
+    #SAVE EXPERIMENTS
+    if index < len(st.session_state.subpages) - 1:
+        next_page_index = index + 1
+        if "experiments" in st.session_state.subpages[next_page_index]:
+            experiments = {
+                tab_name: [
+                    {**item,
+                     "solutions": [],
+                     "section": tab_name,
+                     "type": page.check_tag(item["tag"]),
+                     "absolute_index" :sum(len(page.selections[k]) for k in range(i)) + j,
+                     "background_color": "#6290C3" if page.check_tag(item["tag"]) == "PI" else "#F25757",
+                     "text_color": "white"}
+                    for j, item in enumerate(page.selections[i])
                 ]
-            ),
-            "Name": st.column_config.TextColumn("Name", disabled=True),
-            "Quantity": st.column_config.TextColumn("Quantity", disabled=True),
-            "Unit": st.column_config.TextColumn("Unit", disabled=True),
-        }
-    )
+                for i, tab_name in enumerate(tab_names)
+            }
+            st.session_state.subpages[next_page_index]["experiments"] = experiments
 
-    # Save buttons for navigation
+pageSelected = BreadCrumbs(st.session_state.current_page["subpage"], pages=st.session_state.subpages)
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# UI CODE
+# MAIN PAGE
+
+#ACTIVE LABELS BASED ON EXPERIMENT TYPE
+if "active_experiment" not in st.session_state:
+    st.session_state.active_experiment = ""
+active_experiment = st.session_state.active_experiment
+index = st.session_state.current_page["index"]
+labels = st.session_state.subpages[index]["highlighter_labels"]
+
+### display main subpage
+if not page.coffee_break_display:
+    if st.session_state.active_experiment == "non-PI":
+        page.update_labels_type([labels[1]])
+        page.main_page(tab_names)
+    else:
+        page.update_labels_type(labels)
+        page.main_page(tab_names)
+else:
+    page.main_page()
     col1, col2 = st.columns([1, 2])
     with col1:
         if st.button("Save", use_container_width=True):
             save()
     with col2:
         if st.button("Save & next", use_container_width=True):
+            save()
+            next()
 
-            # Add completed_paper to session state and cookies
-            st.session_state["completed_paper"] = pmid
-            cookies["completed_paper"] = pmid
-
-            # Clear selected_paper in cookies and session state
-            if "selected_paper" in st.session_state:
-                del st.session_state["selected_paper"]
-
-            cookies["selected_paper"] = ""
-
-            # Clear paper in progress in cookies and session state and users table
-            if "paper_in_progress" in st.session_state:
-                del st.session_state["paper_in_progress"]
-
-            cookies["paper_in_progress"] = ""
-            cookies.save()
-
-            # Add pmid to Papers completed list in users table
-            userID = st.session_state.get("userID")
-            if userID:
-                try:
-                    users_df = pd.read_excel(USERS_TABLE_PATH)
-                    user_row = users_df[users_df["userID"] == userID]
-                    if not user_row.empty:
-                        papers_completed = eval(user_row["Papers completed"].values[0])
-                        papers_completed.append(pmid)
-                        users_df.loc[users_df["userID"] == userID, "Papers completed"] = str(papers_completed)
-                        users_df.to_excel(USERS_TABLE_PATH, index=False)
-                except Exception as e:
-                    st.error(f"Error updating users table: {e}")
-
-            # Clear "Paper in progress" column in users table
-            users_df.loc[users_df["userID"] == userID, "Paper in progress"] = None
-            users_df.to_excel(USERS_TABLE_PATH, index=False)
-
-            # Reset navigation state after completing a paper
-            if "pages" in st.session_state:
-                del st.session_state["pages"]
-            if "current_page" in st.session_state:
-                del st.session_state["current_page"]
-
-            # reenable sidebar navigation
-            st.set_option("client.showSidebarNavigation", True)
-            st.switch_page("pages/7_thanks.py")
-else:
-    st.title("")
-def render_sidebar():
-
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# UI CODE
+# SIDEBAR (only when not in coffee break)
+if not page.coffee_break_display:
     with st.sidebar:
-        # Use the DOI link dynamically
         st.title("Paper Annotation")
-
-        if st.session_state.current_page["page"]["label"] == st.session_state.links[0]["label"]:
-            st.subheader("Step 1/4 : Identify experiments (names)")
-            st.markdown(
-                "Identify all the experimental methods used in the paper and determine if they contain any steps that **preserve protein interactions (PIs) with any other type of molecule, in cell-free systems, without use of cross-linking**. We are not interested in identifying methods that are exclusively computational.")
-        elif st.session_state.current_page["page"]["label"] == st.session_state.links[1]["label"]:
-            st.subheader("Step 2/4 : Identify solutions (names)")
-            st.markdown(
-                "For each of the laboratory experiments that you identified in the previous step, select the solution names used in distinct steps of the experimental protocol. If the solution is intended to **preserve protein interactions (PIs) with any other type of molecule, in cell-free systems, without use of cross-linking**, thet it should be classified as \"PI\", and as \"non-PI\" otherwise, like before. An experiment that has been labeled as \"non-PI\" cannot contain \"PI\" solutions, but the opposite is possible.")
-        elif st.session_state.current_page["page"]["label"] == st.session_state.links[3]["label"]:
-            st.subheader("Step 3/4 : Experiment details")
-            st.markdown(
-                "For each of the PI laboratory experiments that you identified in the first step, find the details we ask  below. For each selected question you will need to find the answer in the text of the paper (\"Select\" button). In the case the information is split in multiple locations in the paper, then you can append more text to your current selection by pressing the \"Add to selection\" button, repeating as many times as necessary. The \"Select\" button is reset when you move on to the next question.")
-        elif st.session_state.current_page["page"]["label"] == st.session_state.links[5]["label"]:
-            st.subheader("Step 4/4 : Solution composition")
-            st.markdown(
-                "For each of the PI solutions that you identified in the second step, find their detailed composition in the text after selecting the right button for the type of chemical. If the composition of a solution used in the experiments is not described in detail but instead is offered as a reference to previous work, then select that reference in-text withe the corresponding button selected.  ")
-        else:
-            st.title("")
-
-        if doi_link:
-            st.link_button("Go to full-text paper", doi_link, use_container_width=True)
-        else:
-            st.write("DOI link not available for this paper.")
-
+    page.sidebar_info()
+    with st.sidebar:
         col1, col2, col3 = st.columns([1, 1, 2])
 
         with col1:
@@ -589,115 +293,8 @@ def render_sidebar():
                 save()
                 next()
 
-        if st.session_state.current_page["page"]["label"] == st.session_state.links[0]["label"]:
-            header = {
-                "column_1": "Experiment name",
-                "column_2": "Type"
-            }
-            for tab_index, tab_results in enumerate(st.session_state["cards"][0]):
-                for i, item in enumerate(tab_results):
-                    colored_card(
-                        title=f"{item['tag']}",
-                        subtitle=item['text'],
-                        bg_color=item['color']
-                    )
-        elif st.session_state.current_page["page"]["label"] == st.session_state.links[1]["label"]:
-            # print(st.session_state.cards)
-            buttons = []
-            for tab_index, tab_results in enumerate(st.session_state["cards"][0]):
-                for i, item in enumerate(tab_results):
-                    details = {
-                        "index": i,
-                        "name": item["text"],
-                        "type": check_tag(item["tag"]),
-                        "background_color": "#6290C3" if check_tag(item["tag"]) == "PI" else "#F25757",
-                        "text_color": "white"
-                    }
-                    buttons.append(details)
-            header = {
-                "column_1": "Experiment > Solution",
-                "column_2": "Type"
-            }
-            st.session_state["active_solution_btn"] = TableSelect(header, buttons, 2, key=st.session_state.links[1]["label"])
-            # for tab_index, tab_results in enumerate(st.session_state["cards"][1]):
-            #     for i, item in enumerate(tab_results):
-            #         full_type = table + " solution"
-            #         if full_type == item['tag']:
-            #             colored_card(
-            #                 title=f"{item['tag']}",
-            #                 subtitle=item['text'],
-            #                 bg_color=item['color']
-            #             )
-            #         elif table == "":
-            #             colored_card(
-            #                 title=f"{item['tag']}",
-            #                 subtitle=item['text'],
-            #                 bg_color=item['color']
-            #             )
+    st.session_state.active_experiment = page.sidebar_widget()
 
-        elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]["label"]:
-            st.title(st.session_state.links[2]["label"])
-
-        elif st.session_state.current_page["page"]["label"] == st.session_state.links[3]["label"]:
-            st.title(st.session_state.links[3]["label"])
-        # elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]["label"]:
-        #     st.title(st.session_state.links[4]["label"])
-        else:
-            st.title("")
-
-# Render sidebar and highlighter everywhere except coffee breaks
-if "Coffee Break" not in st.session_state.current_page["page"]["label"]:
-    render_sidebar()
-
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# print(st.session_state)
-#
-# # Extract to a plain dict
-# plain_state = dict(st.session_state)
-#
-# # Build a new dict with only JSON-serializable values
-# serializable_state = {}
-# for k, v in plain_state.items():
-#     # Pandas DataFrame → list of records
-#     if isinstance(v, pd.DataFrame):
-#         serializable_state[k] = v.to_dict(orient="records")
-#     #  NumPy arrays → lists
-#     elif isinstance(v, np.ndarray):
-#         serializable_state[k] = v.tolist()
-#     #  NumPy scalars → native Python types
-#     elif isinstance(v, (np.integer, np.floating, np.bool_)):
-#         serializable_state[k] = v.item()
-#     # Anything else that’s already JSON-safe
-#     elif isinstance(v, (str, int, float, bool, list, dict, type(None))):
-#         serializable_state[k] = v
-#     # Fallback: stringify
-#     else:
-#         serializable_state[k] = str(v)
-#
-# # Dump to JSON
-# with open("sessionstate.json", "w") as f:
-#     json.dump(serializable_state, f, indent=2)
-#
-# def default_serializer(o):
-#     # DataFrame to dict
-#     if hasattr(o, "to_dict"):
-#         return o.to_dict(orient="records")
-#     # NumPy to list or Python scalar
-#     if isinstance(o, np.ndarray):
-#         return o.tolist()
-#     if isinstance(o, (np.integer, np.floating, np.bool_)):
-#         return o.item()
-#     # Fallback
-#     return str(o)
-#
-# plain_state = dict(st.session_state)
-# json_text = json.dumps(plain_state, indent=2, default=default_serializer)
-# with open("sessionstate.json", "w") as f:
-#     f.write(json_text)
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
+    # reload state if current labels are not synced
+    if active_experiment != st.session_state.active_experiment:
+        st.rerun()

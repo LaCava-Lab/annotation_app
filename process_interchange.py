@@ -13,4 +13,4 @@ detail_picker = data["pages"]["5_detail_picker"]
 review_submit = data["pages"]["6_review_submit"]
 thanks = data["pages"]["7_thanks"]
 
-print(resume)
+# print(resume)

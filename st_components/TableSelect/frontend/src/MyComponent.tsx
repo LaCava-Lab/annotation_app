@@ -22,7 +22,7 @@ type BUTTON_1_COLUMNS = {
 
 function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
   const {header, buttons, columns} = args
-  console.log(buttons)
+//  console.log(buttons)
   const [isActive, setIsActive] = useState(0)
 
 
@@ -60,7 +60,7 @@ function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
 
   const setActive = useCallback((button) => {
     setIsActive(button)
-    console.log(button)
+//    console.log(button)
     Streamlit.setComponentValue(buttons[button])
 //    Streamlit.setComponentValue(buttons[button])
 //    if (isActive > 0)
