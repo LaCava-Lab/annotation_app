@@ -262,7 +262,7 @@ labels = st.session_state.subpages[index]["highlighter_labels"]
 
 ### display main subpage
 if not page.coffee_break_display:
-    if st.session_state.active_experiment == "non-PI":
+    if st.session_state.active_experiment == "non-PI" and page.index == 2:
         page.update_labels_type([labels[1]])
         page.main_page(tab_names)
     else:
