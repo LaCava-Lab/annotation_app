@@ -79,6 +79,18 @@ def abandon_paper(user_key, pmid, token):
     except Exception:
         return False
 
+def set_abandon_limit(user_key, token):
+	try:
+		resp = requests.post(
+			f"{BACKEND_URL}/users/set_abandon_limit",
+			json={"userKey": user_key},
+			cookies={"token": token},
+			timeout=10
+		)
+		return resp.status_code == 200
+	except Exception:
+		return False
+
 def update_paper_in_progress(user_key, pmid, token):
     try:
         resp = requests.post(

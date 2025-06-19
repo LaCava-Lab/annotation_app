@@ -3,7 +3,7 @@ from pathlib import Path
 from process_interchange import resume
 from streamlit_cookies_manager import CookieManager
 from src.various import get_pmid, handle_redirects, get_token, get_user_key
-from src.database import fetch_user_info, fetch_paper_info, abandon_paper, clear_paper_in_progress
+from src.database import fetch_user_info, fetch_paper_info, abandon_paper, clear_paper_in_progress, set_abandon_limit
 
 st.title(resume["title"])
 
@@ -28,8 +28,13 @@ if not success:
 
 papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
 num_abandoned = len(papers_abandoned)
-max_abandonments = 5
-remaining_restarts = max_abandonments - num_abandoned
+max_abandonments = 2
+
+# Ensure remaining_restarts is never negative
+remaining_restarts = max(0, max_abandonments - num_abandoned)
+
+# Check the abandon limit variable
+abandon_limit_reached = user_info.get("AbandonLimit", False)
 
 # Get paper title from backend
 paper_title = None
@@ -68,7 +73,11 @@ with col1:
     if st.button(resume["paper_in_progress"]["buttons"][0]["text"], type="primary"):
         st.switch_page("pages/5_detail_picker.py")
 with col2:
-    if st.button(resume["paper_in_progress"]["buttons"][1]["text"], disabled=(remaining_restarts <= 0)):
+    # Button is only enabled if abandon_limit_reached is False
+    if st.button(
+        resume["paper_in_progress"]["buttons"][1]["text"],
+        disabled=abandon_limit_reached,
+    ):
         # Abandon the current paper in backend
         if user_key and pmid:
             abandon_paper(user_key, pmid, token)
@@ -78,5 +87,8 @@ with col2:
         cookies.save()
         if "paper_in_progress" in st.session_state:
             del st.session_state["paper_in_progress"]
+        # If this was the last allowed abandonment, set the abandon limit variable in backend
+        if remaining_restarts == 1:
+            set_abandon_limit(user_key, token)
         # Redirect to the "Pick a new paper" page
         st.switch_page("pages/2_pick_paper.py")
