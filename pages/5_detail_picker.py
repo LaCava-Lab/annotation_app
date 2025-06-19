@@ -163,6 +163,7 @@ if "subpages" not in st.session_state:
     ]
     st.session_state.current_page = {"subpage": st.session_state.subpages[0], "index": 0}
     st.session_state.subpages[0]["visited"] = 1
+    st.session_state.active_experiment_widget = {}
 
 subpages_data = []
 for i,subpage in enumerate(st.session_state.subpages):
@@ -173,6 +174,15 @@ for i,subpage in enumerate(st.session_state.subpages):
     selections = subpage["selections"]
     highlighter_labels = subpage["highlighter_labels"]
     index = subpage["index"]
+
+    if "experiments" in subpage:
+
+        if st.session_state.active_experiment_widget:
+            exp = st.session_state.active_experiment_widget
+            absolute_index = exp.get("absolute_index")
+            list = subpage["experiments"].get(exp.get("section"))
+            if list:
+                selections = list[absolute_index]["solutions"]
 
     subpages_data.append(Subpage(index,label, doi_link, paper_data, sidebar_content, selections, highlighter_labels, coffee_break,coffee_break_display))
 
@@ -211,7 +221,6 @@ def prev():
 
     if st.session_state.current_page["index"] > 0:
         changePage(st.session_state.current_page["index"] - 1)
-
 
 def save():
     index = st.session_state.current_page["index"]
@@ -293,7 +302,17 @@ if not page.coffee_break_display:
                 save()
                 next()
 
+
+    page.active_experiment = st.session_state.active_experiment_widget
+
     st.session_state.active_experiment = page.sidebar_widget()
+
+    # print(st.session_state.subpages[page.index - 1].get("experiments"))
+    # print(st.session_state)
+
+    # reload solutions in experiments
+    if page.active_experiment != st.session_state.active_experiment_widget:
+        st.rerun()
 
     # reload state if current labels are not synced
     if active_experiment != st.session_state.active_experiment:

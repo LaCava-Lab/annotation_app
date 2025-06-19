@@ -10,14 +10,16 @@ type BUTTON_2_COLUMNS = {
   text: string,
   type: string,
   background_color:string,
-  text_color:string
+  text_color:string,
+  solutions: any[]
 }
 
 type BUTTON_1_COLUMNS = {
   absolute_index: number,
   text: string,
   background_color:string,
-  text_color:string
+  text_color:string,
+  solutions: any[]
 }
 
 function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
@@ -54,9 +56,12 @@ function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
   }
 
   useEffect(() => {
-    Streamlit.setFrameHeight()
     Streamlit.setComponentValue(buttons[isActive])
   }, [])
+
+  useEffect(() => {
+    Streamlit.setFrameHeight()
+  }, [buttons])
 
   const setActive = useCallback((button) => {
     setIsActive(button)
@@ -75,7 +80,7 @@ function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
     return isActive === category;
   }, [isActive])
 
-  const button_two_collumns = ({ absolute_index,text,type,background_color,text_color }: BUTTON_2_COLUMNS) : ReactElement => {
+  const button_two_collumns = ({ absolute_index,text,type,background_color,text_color, solutions }: BUTTON_2_COLUMNS) : ReactElement => {
     return (
       <div key={text} style={style(absolute_index,background_color,text_color)} onClick={() => setActive(absolute_index)} className={`TableSelect_Row ${isRowActive(absolute_index) ? 'active' : ''}`}>
         <div className="flex">
@@ -84,8 +89,15 @@ function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
           <div className="TableSelect_Col_2">{type}</div>
         </div>
         <div className="solutions">
-          <div style={style_solution(background_color,text_color)} className="solution">sfsdfsfsdf</div>
-          <div style={style_solution(background_color,text_color)} className="solution">sfsdfsfsdf</div>
+          {solutions.map((solution, i) => (
+            <div
+              key={i}
+              style={style_solution(solution.background_color,solution.text_color)}
+              className="solution"
+            >
+              {solution.text}
+            </div>
+          ))}
         </div>
       </div>
     )

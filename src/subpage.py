@@ -18,7 +18,6 @@ class Subpage:
         self.selections = selections
         self.prev_page_context = None
         self.experiments = []
-        self.active_experiment = {}
 
     def assign_experiments(self, experiments):
         self.experiments = experiments
@@ -61,14 +60,38 @@ class Subpage:
                     "column_1": "Experiment > Solution",
                     "column_2": "Type"
                 }
-                flat_list = [item for sublist in self.experiments.values() for item in sublist]
-                flat_solutions = [item for sublist in self.selections for item in sublist]
-                a = len(flat_solutions)
-                self.active_experiment = TableSelect(header, flat_list, 2, key=f"table_select_{self.label}_{a}")
-                self.active_experiment["solutions"] = flat_solutions
-                a = len(flat_solutions)
-                # print(self.active_experiment)
-                if self.active_experiment.get("type") == "non-PI":
+                flat_list_experiments = [{
+                    **item,
+                    "solutions": [{
+                        **inner_item,
+                        "background_color": "#6290C3" if self.check_tag(inner_item["tag"]) == "PI" else "#F25757",
+                        "text_color": "white"
+                    } for inner_sublist in item["solutions"] for inner_item in inner_sublist]
+                } for sublist in self.experiments.values() for item in sublist]
+                flat_list_solutions = [{
+                    **item,
+                    "background_color": "#6290C3" if self.check_tag(item["tag"]) == "PI" else "#F25757",
+                    "text_color": "white"
+                } for sublist in self.selections for item in sublist]
+
+                current_tab = st.session_state.active_experiment_widget.get("section")
+                current_index = st.session_state.active_experiment_widget.get("absolute_index")
+
+                if current_tab is not None or current_index is not None:
+                    for i,experiment in enumerate(st.session_state.subpages[self.index - 1]["experiments"][current_tab]):
+                        if experiment["absolute_index"] == current_index:
+                            print(experiment["absolute_index"],self.selections)
+                            st.session_state.subpages[self.index - 1]["experiments"][current_tab][i]["solutions"] = self.selections
+
+
+                st.session_state.active_experiment_widget = TableSelect(header, flat_list_experiments, 2, key=f"table_select_{self.label}_{len(flat_list_experiments)}")
+
+                st.session_state.active_experiment_widget = {
+                    **st.session_state.active_experiment_widget,
+                    "solutions": flat_list_solutions
+                }
+
+                if st.session_state.active_experiment_widget.get("type") == "non-PI":
                     return "non-PI"
                 else:
                     return "PI"
@@ -130,6 +153,7 @@ class Subpage:
     def displayTextHighlighter(self, labels, tab_names):
         tabs = st.tabs(tab_names)
         results = []
+        absolute_index = st.session_state.active_experiment_widget.get("absolute_index")
 
         for i, (name, tab) in enumerate(zip(tab_names, tabs)):
             tab_annotations = []
@@ -142,12 +166,30 @@ class Subpage:
                     labels=labels,
                     text_height=400,
                     annotations=tab_annotations,
-                    key=f"text_highlighter_{name}_{self.label}"  # Assign a unique key for each tab
+                    key=f"text_highlighter_{name}_{''.join(self.label.split(' '))}_{absolute_index}"  # Assign a unique key for each tab
                 )
                 results.append(result)
         self.selections = results
 
     def display_coffee_break_1(self):
+        experiments = []
+        for tab in self.experiments.values():
+            for experiment in tab:
+                for tab2 in experiment["solutions"]:
+                    for solution in tab2:
+                        exp = {
+                            "type": experiment["type"],
+                            "text": experiment["text"],
+                            "alt_text": "",
+                            "solution": {
+                                "type": self.check_tag(solution["tag"]),
+                                "text": solution["text"],
+                                "alt_text": ""
+                            }
+                        }
+                        experiments.append(exp)
+
+
         # Fetch Coffee Break A text from interchange.json
         coffee_break_a = detail_picker["coffee_break_a"]
         st.title(detail_picker["title"])
@@ -166,13 +208,14 @@ class Subpage:
         # Editable table for experiments and solutions
         exp_df = pd.DataFrame([
             {
-                "Experiment name": "Immunoprecipitation",
-                "Alternative Experiment Name": "",
-                "Experiment Type": "PI",
-                "Solution name": "extraction solution",
-                "Alternative Solution Name": "",
-                "Solution Type": "PI"
+                "Experiment name": e["text"],
+                "Alternative Experiment Name": e["alt_text"],
+                "Experiment Type": e["type"],
+                "Solution name": e["solution"]["text"],
+                "Alternative Solution Name": e["solution"]["alt_text"],
+                "Solution Type": e["solution"]["type"]
             }
+            for e in experiments
         ])
 
         edited_df = st.data_editor(
