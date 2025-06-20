@@ -184,3 +184,39 @@ def refresh_paper_list(all_papers):
     for k in ["a", "b", "c", "d", "e"]:
         if k in st.session_state:
             del st.session_state[k]
+
+def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_doi_by_pmid):
+    """
+    Fetches fulltext and DOI for a paper by PMID, normalizes, and returns (df, tab_names, doi_link).
+    """
+    def normalize_section_name(section):
+        s = section.strip().upper()
+        if "INTRO" in s:
+            return "INTRODUCTION"
+        if "METHOD" in s:
+            return "METHODS"
+        if "RESULT" in s:
+            return "RESULTS"
+        if "DISCUSS" in s:
+            return "DISCUSSION"
+        if "SUPPL" in s:
+            return "SUPPLEMENTARY"
+        if "CONCL" in s:
+            return "CONCLUSION"
+        return section.strip()
+
+    token = get_token(cookies)
+    raw = fetch_fulltext_by_pmid(pmid, token)
+    df = pd.DataFrame(raw)
+    if df.empty:
+        st.error("No fulltext data available for this paper.")
+        st.stop()
+    df = df[df["TextValue"].notnull() & (df["TextValue"].str.strip() != "")]
+    df = df.rename(columns={"TextValue": "text"})
+    df = df[~df["Section"].str.upper().isin(["ISSUE", "FIG"])]
+    df["section_type"] = df["Section"].apply(normalize_section_name)
+    tab_names = df["section_type"].drop_duplicates().tolist()
+    doi_link = fetch_doi_by_pmid(pmid, token)
+    if doi_link and not str(doi_link).startswith("http"):
+        doi_link = f"https://doi.org/{doi_link}"
+    return df, tab_names, doi_link

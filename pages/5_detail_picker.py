@@ -2,8 +2,9 @@ import os
 import json
 import pandas as pd
 import streamlit as st
-from subpage import Subpage
-from src.various import get_pmid, handle_redirects
+from src.subpage import Subpage
+from src.various import get_pmid, handle_redirects, get_token, get_user_key, fetch_and_prepare_paper_data
+from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_session_state
 from streamlit_cookies_manager import CookieManager
 from st_components.BreadCrumbs import BreadCrumbs
 
@@ -46,52 +47,23 @@ if not cookies.ready():
 
 handle_redirects(cookies)
 
-# PAPER INFO
-JSON_FOLDER = "Full_text_jsons" # Path to the folder containing JSON files
-USERS_TABLE_PATH = r"AWS_S3/users_table.xlsx" # Path to the users table
 pmid = get_pmid(cookies) # Fetch the PMID
-doi_link = None # Initialize DOI link
-paper_data = None
-tab_names = None
+# Redirect to pick paper if no paper in progress
+if not pmid:
+    st.error("No paper in progress. Please pick a paper to annotate.")
+    st.switch_page("pages/2_pick_paper.py")
 
-def load_paper_by_pmid(pmid):
-    for filename in os.listdir(JSON_FOLDER):
-        if filename.endswith(".json"):
-            try:
-                with open(os.path.join(JSON_FOLDER, filename), "r", encoding="utf-8") as f:
-                    raw = json.load(f)
-                    # Check if the PMID matches
-                    doc = raw[0]["documents"][0]
-                    front = doc["passages"][0]  # Front matter
-                    meta = front["infons"]
-                    extracted_pmid = meta.get("article-id_pmid", None)
-                    if extracted_pmid == pmid:
-                        return raw
-            except Exception as e:
-                st.error(f"Error reading file {filename}: {e}")
-    st.error(f"No JSON file found for PMID: {pmid}")
-    st.stop()
+if "paper_data" not in st.session_state:
+    df, tab_names, doi_link = fetch_and_prepare_paper_data(
+        pmid, cookies, fetch_fulltext_by_pmid, fetch_doi_by_pmid
+    )
+    st.session_state["paper_data"] = df
+    st.session_state["tab_names"] = tab_names
+    st.session_state["doi_link"] = doi_link
 
-if True: # Load the selected paper's JSON file
-    raw = load_paper_by_pmid(pmid)
-    doc = raw[0]["documents"][0]
-    all_data = []
-    for passage in doc["passages"]:
-        section_type = passage["infons"].get("section_type", "Unknown")
-        text = passage.get("text", "")
-        all_data.append({
-            "section_type": section_type,
-            "text": text
-        })
-        # Extract DOI link from the metadata
-        if "article-id_doi" in passage["infons"]:
-            doi_link = f"https://doi.org/{passage['infons']['article-id_doi']}"
-    # Convert to DataFrame
-    df = pd.DataFrame(all_data)
-    # Filter out sections that do not need to be annotated
-    df = df[~df["section_type"].isin(["TITLE", "REF", "SUPPL", "AUTH_CONT", "COMP_INT", "ACK_FUND"])]
-    paper_data = df
-    tab_names = df["section_type"].unique().tolist()  # Extract unique tab names
+paper_data = st.session_state["paper_data"]
+tab_names = st.session_state["tab_names"]
+doi_link = st.session_state["doi_link"]
 
 # PAGES INFO
 if "subpages" not in st.session_state:
@@ -194,10 +166,11 @@ page = subpages_data[st.session_state.current_page["index"]]
 # func to change page
 def changePage(index):
     st.session_state.current_page = {
-        "subpage": st.session_state.subpages[index],
+        "page": st.session_state.links[index],
         "index": index
     }
-    st.session_state.subpages[index]["visited"] = 1
+    st.session_state.pages[index]["visited"] = 1
+    save()
     st.rerun()
 
 def next():
@@ -270,14 +243,17 @@ if not page.coffee_break_display:
         page.main_page(tab_names)
 else:
     page.main_page()
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        if st.button("Save", use_container_width=True):
-            save()
-    with col2:
-        if st.button("Save & next", use_container_width=True):
-            save()
-            next()
+    page.display_coffee_break_nav_buttons(
+        index, pmid, cookies,
+        prev, save, next,
+        get_user_key, get_token, add_completed_paper, clear_paper_in_progress
+    )
+
+page.display_abandon_paper_button(
+    index, pmid, cookies,
+    prev, save, next,
+    get_user_key, get_token, add_completed_paper, clear_paper_in_progress, fetch_user_info, set_abandon_limit, abandon_paper
+)
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # UI CODE

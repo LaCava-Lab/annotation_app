@@ -407,3 +407,125 @@ class Subpage:
             }
         )
 
+    def display_coffee_break_nav_buttons(self, 
+        index, pmid, cookies,
+        prev, save, next,
+        get_user_key, get_token, add_completed_paper, clear_paper_in_progress
+    ):  
+        # Detect if this is the last coffee break
+        is_last_coffee_break = (
+            self.label.lower().startswith("coffee break") and
+            index == len(st.session_state.subpages) - 1
+        )
+
+        col_prev, col_save, col_save_next = st.columns([1, 1, 2])
+        with col_prev:
+            if st.button("Prev", use_container_width=True, key=f"cb_prev_{index}"):
+                prev()
+        with col_save:
+            if st.button("Save", use_container_width=True, key=f"cb_save_{index}"):
+                save()
+        with col_save_next:
+            if is_last_coffee_break:
+                if st.button("Save & next", use_container_width=True, key=f"cb_save_next_{index}"):
+                    st.session_state["completed_paper"] = pmid
+                    cookies["completed_paper"] = pmid
+
+                    if "selected_paper" in st.session_state:
+                        del st.session_state["selected_paper"]
+                    cookies["selected_paper"] = ""
+
+                    if "paper_in_progress" in st.session_state:
+                        del st.session_state["paper_in_progress"]
+                    cookies["paper_in_progress"] = ""
+                    cookies.save()
+
+                    user_key = get_user_key(cookies)
+                    token = get_token(cookies)
+                    if user_key:
+                        # Only clear after add_completed_paper succeeds
+                        if add_completed_paper(user_key, pmid):
+                            clear_paper_in_progress(user_key, token)
+
+                    if "pages" in st.session_state:
+                        del st.session_state["pages"]
+                    if "current_page" in st.session_state:
+                        del st.session_state["current_page"]
+
+                    st.set_option("client.showSidebarNavigation", True)
+                    st.switch_page("pages/7_thanks.py")
+            else:
+                if st.button("Save & next", use_container_width=True, key=f"cb_save_next_{index}"):
+                    save()
+                    next()
+                    
+    def display_abandon_paper_button(
+        self, index, pmid, cookies,
+        prev, save, next,
+        get_user_key, get_token, add_completed_paper, clear_paper_in_progress,
+        fetch_user_info, set_abandon_limit, abandon_paper
+    ):
+        user_key = get_user_key(cookies)
+        token = get_token(cookies)
+        success, user_info = fetch_user_info(user_key, token)
+        if not success:
+            st.error(user_info)
+            return
+
+        papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
+        num_abandoned = len(papers_abandoned)
+        max_abandonments = 2
+        remaining_restarts = max(0, max_abandonments - num_abandoned)
+        abandon_limit_reached = user_info.get("AbandonLimit", False)
+
+        if "show_abandon_confirm" not in st.session_state:
+            st.session_state["show_abandon_confirm"] = False
+
+        # Use the same column layout as your nav buttons
+        col_abandon, _, _ = st.columns([1, 1, 2])
+        with col_abandon:
+            if st.button("Abandon Paper", type="secondary", use_container_width=True, disabled=abandon_limit_reached, key=f"abandon_{index}"):
+                if remaining_restarts == 1:
+                    st.session_state["show_abandon_confirm"] = True
+                else:
+                    if user_key and pmid:
+                        abandon_paper(user_key, pmid, token)
+                        clear_paper_in_progress(user_key, token)
+                    for key in [
+                        "paper_in_progress", "selected_paper", "completed_paper",
+                        "cards", "current_page", "pages", "active_solution_btn",
+                        "paper_data", "tab_names", "doi_link"
+                    ]:
+                        if key in st.session_state:
+                            del st.session_state[key]
+                        if key in cookies:
+                            cookies[key] = ""
+                    cookies.save()
+                    st.success("Paper abandoned. Returning to paper selection.")
+                    st.switch_page("pages/2_pick_paper.py")
+
+        if st.session_state.get("show_abandon_confirm", False):
+            st.warning("Are you sure you want to abandon this paper? This is your last allowed restart!")
+            col_confirm, col_cancel = st.columns([1, 1])
+            with col_confirm:
+                if st.button("Yes, abandon", key=f"confirm_abandon_{index}"):
+                    if user_key and pmid:
+                        abandon_paper(user_key, pmid, token)
+                        clear_paper_in_progress(user_key, token)
+                    for key in [
+                        "paper_in_progress", "selected_paper", "completed_paper",
+                        "cards", "current_page", "pages", "active_solution_btn",
+                        "paper_data", "tab_names", "doi_link"
+                    ]:
+                        if key in st.session_state:
+                            del st.session_state[key]
+                        if key in cookies:
+                            cookies[key] = ""
+                    cookies.save()
+                    set_abandon_limit(user_key, token)
+                    st.session_state["show_abandon_confirm"] = False
+                    st.success("Paper abandoned. Returning to paper selection.")
+                    st.switch_page("pages/2_pick_paper.py")
+            with col_cancel:
+                if st.button("Cancel", key=f"cancel_abandon_{index}"):
+                    st.session_state["show_abandon_confirm"] = False
