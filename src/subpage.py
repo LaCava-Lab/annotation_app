@@ -151,6 +151,7 @@ class Subpage:
     def update_labels_type(self, labels):
         self.highlighter_labels = labels
     def displayTextHighlighter(self, labels, tab_names):
+        label_names = [l[0] for l in labels]
         tabs = st.tabs(tab_names)
         results = []
         absolute_index = st.session_state.active_experiment_widget.get("absolute_index")
@@ -158,15 +159,18 @@ class Subpage:
         for i, (name, tab) in enumerate(zip(tab_names, tabs)):
             tab_annotations = []
             if len(self.selections) > 0:
-                tab_annotations = self.selections[i]
-
+                # Filter out annotations with unknown tags
+                tab_annotations = [
+                    ann for ann in self.selections[i]
+                    if ann.get("tag") in label_names
+                ]
             with tab:
                 result = text_highlighter(
                     text=self.get_tab_body(name),
                     labels=labels,
                     text_height=400,
                     annotations=tab_annotations,
-                    key=f"text_highlighter_{name}_{''.join(self.label.split(' '))}_{absolute_index}"  # Assign a unique key for each tab
+                    key=f"text_highlighter_{name}_{''.join(self.label.split(' '))}_{absolute_index}"
                 )
                 results.append(result)
         self.selections = results
@@ -458,7 +462,7 @@ class Subpage:
                 if st.button("Save & next", use_container_width=True, key=f"cb_save_next_{index}"):
                     save()
                     next()
-                    
+
     def display_abandon_paper_button(
         self, index, pmid, cookies,
         prev, save, next,
