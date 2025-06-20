@@ -172,7 +172,6 @@ def changePage(index):
         "index": index
     }
     st.session_state.subpages[index]["visited"] = 1
-    save()
     st.rerun()
 
 def next():
@@ -191,12 +190,20 @@ def next():
                 changePage(index + 1)
 
 def prev():
+    index = st.session_state.current_page["index"]
+    # If currently displaying a coffee break, just hide it and stay on the same page
+    if st.session_state.subpages[index]["coffee_break"] and st.session_state.subpages[index]["coffee_break_display"]:
+        st.session_state.subpages[index]["coffee_break_display"] = False
+        st.rerun()
+        return
+
+    # Otherwise, go to the previous page
     for page in st.session_state.subpages:
         page["coffee_break_display"] = False
 
-    if st.session_state.current_page["index"] > 0:
-        changePage(st.session_state.current_page["index"] - 1)
-
+    if index > 0:
+        changePage(index - 1)
+    
 def save():
     index = st.session_state.current_page["index"]
 
