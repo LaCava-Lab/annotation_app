@@ -2,7 +2,7 @@ from streamlit_cookies_manager import CookieManager
 import streamlit as st
 import pandas as pd
 import random
-from src.database import fetch_all_papers
+from src.database import fetch_all_papers, fetch_session_state
 
 def evaluate_userID_format(userid):
     if not userid.isdigit():
@@ -220,3 +220,14 @@ def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_do
     if doi_link and not str(doi_link).startswith("http"):
         doi_link = f"https://doi.org/{doi_link}"
     return df, tab_names, doi_link
+
+def load_state_from_backend(cookies, pmid):
+    if not st.session_state.get("backend_loaded", False):
+        user_key = get_user_key(cookies)
+        token = get_token(cookies)
+        backend_state = fetch_session_state(user_key, pmid, token)
+        if backend_state:
+            for key in ["subpages", "current_page"]:
+                if key in backend_state:
+                    st.session_state[key] = backend_state[key]
+            st.session_state["backend_loaded"] = True

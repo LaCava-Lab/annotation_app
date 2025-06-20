@@ -3,7 +3,7 @@ import json
 import pandas as pd
 import streamlit as st
 from src.subpage import Subpage
-from src.various import get_pmid, handle_redirects, get_token, get_user_key, fetch_and_prepare_paper_data
+from src.various import get_pmid, handle_redirects, get_token, get_user_key, fetch_and_prepare_paper_data, load_state_from_backend
 from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_session_state
 from streamlit_cookies_manager import CookieManager
 from st_components.BreadCrumbs import BreadCrumbs
@@ -137,6 +137,8 @@ if "subpages" not in st.session_state:
     st.session_state.subpages[0]["visited"] = 1
     st.session_state.active_experiment_widget = {}
 
+load_state_from_backend(cookies, pmid)
+
 subpages_data = []
 for i,subpage in enumerate(st.session_state.subpages):
     label = subpage["label"]
@@ -220,6 +222,17 @@ def save():
             }
             st.session_state.subpages[next_page_index]["experiments"] = experiments
 
+    # Persist the session state to the backend
+    user_key = get_user_key(cookies)
+    pmid = get_pmid(cookies)
+    token = get_token(cookies)
+    session_state_to_save = {
+        "subpages": st.session_state.get("subpages", []),
+        "current_page": st.session_state.get("current_page", {}),
+        # ADD MORE KEYS IF NEEDED
+    }
+    save_session_state(user_key, pmid, session_state_to_save, token)
+    
 pageSelected = BreadCrumbs(st.session_state.current_page["subpage"], pages=st.session_state.subpages)
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
