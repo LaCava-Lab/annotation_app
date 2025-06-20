@@ -1,4 +1,5 @@
 import requests
+import json
 
 BACKEND_URL = "http://localhost:3000"
 
@@ -126,6 +127,50 @@ def add_completed_paper(user_key, pmid):
     except Exception:
         return False
     
+def save_session_state(user_key, pmid, session_state, token):
+    """
+    Save the current session state to the backend SessionState table.
+    """
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/sessions/save",
+            json={
+                "userKey": user_key,
+                "pmid": pmid,
+                "json_state": json.dumps(session_state)
+            },
+            cookies={"token": token},
+            timeout=10
+        )
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+def fetch_session_state(user_key, pmid, token):
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/sessions/by_user_pmid",
+            params={"userKey": user_key, "pmid": pmid},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            print(f"DEBUG: fetch_session_state response: {data}")
+            if "json_state" in data:
+                # Accept both dict and string
+                if isinstance(data["json_state"], dict):
+                    state = data["json_state"]
+                else:
+                    state = json.loads(data["json_state"])
+                # Ensure cards is a list, not a string
+                if "cards" in state and isinstance(state["cards"], str):
+                    state["cards"] = json.loads(state["cards"])
+                return state
+        return None
+    except Exception:
+        return None
+
 # -- "Papers" Functions --
 
 def fetch_all_papers(token):

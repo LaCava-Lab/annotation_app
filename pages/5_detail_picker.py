@@ -8,7 +8,7 @@ from st_components.TableSelect import TableSelect
 from process_interchange import detail_picker
 from src.various import get_pmid, handle_redirects, get_token, get_user_key
 from st_components.BreadCrumbs import BreadCrumbs
-from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, fetch_user_info, set_abandon_limit, abandon_paper
+from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_session_state
 
 # Set page config
 st.set_page_config(initial_sidebar_state="expanded", page_title="Paper Annotation", layout="wide")
@@ -31,18 +31,35 @@ def save_state_to_cookies():
     cookies["pages"] = json.dumps(st.session_state.get("pages", []))
     cookies["active_solution_btn"] = json.dumps(st.session_state.get("active_solution_btn", {}))
 
-def load_state_from_cookies():
-    if "cards" not in st.session_state and "cards" in cookies and cookies["cards"]:
-        st.session_state["cards"] = json.loads(cookies["cards"])
-    if "current_page" not in st.session_state and "current_page" in cookies and cookies["current_page"]:
-        st.session_state["current_page"] = json.loads(cookies["current_page"])
-    if "pages" not in st.session_state and "pages" in cookies and cookies["pages"]:
-        st.session_state["pages"] = json.loads(cookies["pages"])
-    if "active_solution_btn" not in st.session_state and "active_solution_btn" in cookies and cookies["active_solution_btn"]:
-        st.session_state["active_solution_btn"] = json.loads(cookies["active_solution_btn"])
+def load_state_from_backend_or_cookies():
+    # Only fetch from backend if not already loaded in this session
+    if not st.session_state.get("backend_loaded", False):
+        user_key = get_user_key(cookies)
+        pmid = get_pmid(cookies)
+        token = get_token(cookies)
+        backend_state = None
 
+        if user_key and pmid:
+            backend_state = fetch_session_state(user_key, pmid, token)
+            if backend_state:
+                for key in ["cards", "current_page", "pages", "active_solution_btn"]:
+                    if key in backend_state:
+                        st.session_state[key] = backend_state[key]
+                st.session_state["backend_loaded"] = True  # Set the flag
+                return  # Stop here, don't load cookies
+
+    # If backend not loaded or not available, try cookies
+    if "cards" in cookies and cookies["cards"]:
+        st.session_state["cards"] = json.loads(cookies["cards"])
+    if "current_page" in cookies and cookies["current_page"]:
+        st.session_state["current_page"] = json.loads(cookies["current_page"])
+    if "pages" in cookies and cookies["pages"]:
+        st.session_state["pages"] = json.loads(cookies["pages"])
+    if "active_solution_btn" in cookies and cookies["active_solution_btn"]:
+        st.session_state["active_solution_btn"] = json.loads(cookies["active_solution_btn"])
+        
 # Load app state from cookies if present
-load_state_from_cookies()
+load_state_from_backend_or_cookies()
 
 # Initialize session state
 if "links" not in st.session_state:
@@ -61,8 +78,17 @@ if "pages" not in st.session_state:
         for i, link in enumerate(st.session_state.links)
     ]
     st.session_state.pages[0]["visited"] = 1
-if "current_page" not in st.session_state:
+
+# After loading state and initializing links/pages
+if (
+    "current_page" not in st.session_state
+    or "index" not in st.session_state["current_page"]
+    or st.session_state["current_page"]["index"] >= len(st.session_state.links)
+):
     st.session_state.current_page = {"page": st.session_state.links[0], "index": 0}
+else:
+    idx = st.session_state["current_page"]["index"]
+    st.session_state.current_page["page"] = st.session_state.links[idx]
 
 # Initialize cards for each page
 if "cards" not in st.session_state:
@@ -75,7 +101,6 @@ pmid = get_pmid(cookies)
 if not pmid:
     st.error("No paper in progress. Please pick a paper to annotate.")
     st.switch_page("pages/2_pick_paper.py")
-
 
 # Fetch user info for abandon limit
 user_key = get_user_key(cookies)
@@ -104,6 +129,8 @@ def normalize_section_name(section):
         return "DISCUSSION"
     if "SUPPL" in s:
         return "SUPPLEMENTARY"
+    if "CONCL" in s:
+        return "CONCLUSION"
     return section.strip()
 
 # Load the selected paper's fulltext using backend function
@@ -171,16 +198,8 @@ def get_tab_body(tab_name):
     tmp = df[df.section_type == tab_name]
     lines = []
     for _, row in tmp.iterrows():
-        t = row.get("Type", "").lower()
         text = row["text"]
-        if t == "title_1":
-            lines.append(f"# {text}")  # Largest heading
-        elif t == "title_2":
-            lines.append(f"## {text}")  # Second largest heading
-        elif t == "title":
-            lines.append(f"### {text}")  # Third largest heading
-        else:
-            lines.append(text)
+        lines.append(text)
     return "\n\n".join(lines) if lines else "No content available for this section."
 
 # Page navigation helpers
@@ -190,6 +209,7 @@ def changePage(index):
         "index": index
     }
     st.session_state.pages[index]["visited"] = 1
+    save()
     save_state_to_cookies()
     st.rerun()
 
@@ -201,8 +221,21 @@ def prev():
     if st.session_state.current_page["index"] > 0:
         changePage(st.session_state.current_page["index"] - 1)
 
+
 def save():
     save_state_to_cookies()
+    user_key = get_user_key(cookies)
+    pmid = get_pmid(cookies)
+    token = get_token(cookies)
+
+    session_state_to_save = {
+        "cards": st.session_state.get("cards", []),
+        "current_page": st.session_state.get("current_page", {}),
+        "pages": st.session_state.get("pages", []),
+        "active_solution_btn": st.session_state.get("active_solution_btn", {}),
+    }
+    success = save_session_state(user_key, pmid, session_state_to_save, token)
+    return success
 
 pageSelected = BreadCrumbs(st.session_state.links, st.session_state.current_page["page"], pages=st.session_state.pages)
 
@@ -327,9 +360,7 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[2]
             save()
     with col_save_next:
         if st.button("Save & next", use_container_width=True):
-            save()
             next()
-    save_state_to_cookies()
 
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[3]["label"]:
     st.title(st.session_state.links[3]["label"])
@@ -426,7 +457,6 @@ elif st.session_state.current_page["page"]["label"] == st.session_state.links[4]
             save()
     with col_save_next:
         if st.button("Save & next", use_container_width=True):
-            save()
             next()
 
 elif st.session_state.current_page["page"]["label"] == st.session_state.links[5]["label"]:
@@ -597,8 +627,7 @@ def render_sidebar():
                 save()
 
         with col3:
-            if st.button("Save & Next", use_container_width=True):
-                save()
+            if st.button("Save & next", use_container_width=True):
                 next()
 
         if st.session_state.current_page["page"]["label"] == st.session_state.links[0]["label"]:
