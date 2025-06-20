@@ -168,10 +168,10 @@ page = subpages_data[st.session_state.current_page["index"]]
 # func to change page
 def changePage(index):
     st.session_state.current_page = {
-        "page": st.session_state.links[index],
+        "subpage": st.session_state.subpages[index],
         "index": index
     }
-    st.session_state.pages[index]["visited"] = 1
+    st.session_state.subpages[index]["visited"] = 1
     save()
     st.rerun()
 
