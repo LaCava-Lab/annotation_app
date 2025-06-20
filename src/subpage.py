@@ -416,11 +416,7 @@ class Subpage:
         prev, save, next,
         get_user_key, get_token, add_completed_paper, clear_paper_in_progress
     ):  
-        # Detect if this is the last coffee break
-        is_last_coffee_break = (
-            self.label.lower().startswith("coffee break") and
-            index == len(st.session_state.subpages) - 1
-        )
+        is_last_page = index == len(st.session_state.subpages) - 1
 
         col_prev, col_save, col_save_next = st.columns([1, 1, 2])
         with col_prev:
@@ -430,7 +426,7 @@ class Subpage:
             if st.button("Save", use_container_width=True, key=f"cb_save_{index}"):
                 save()
         with col_save_next:
-            if is_last_coffee_break:
+            if is_last_page:
                 if st.button("Save & next", use_container_width=True, key=f"cb_save_next_{index}"):
                     st.session_state["completed_paper"] = pmid
                     cookies["completed_paper"] = pmid
@@ -462,7 +458,7 @@ class Subpage:
                 if st.button("Save & next", use_container_width=True, key=f"cb_save_next_{index}"):
                     save()
                     next()
-
+                
     def display_abandon_paper_button(
         self, index, pmid, cookies,
         prev, save, next,
