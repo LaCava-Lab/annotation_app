@@ -292,7 +292,6 @@ def save_annotations_to_db(session_state, user_key, pmid, token):
             json=experiments,
             cookies={"token": token}
         )
-        print("POST /experiments:", resp.status_code, resp.text)
 
     # 3. POST all solutions at once
     if solutions:
@@ -301,7 +300,6 @@ def save_annotations_to_db(session_state, user_key, pmid, token):
             json=solutions,
             cookies={"token": token}
         )
-        print("POST /solutions:", resp.status_code, resp.text)
 
     # 4. (Baits, interactors, chemistry)
 
