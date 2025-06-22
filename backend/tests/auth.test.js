@@ -20,7 +20,6 @@ describe('Auth Routes', () => {
     });
 
     assert.strictEqual(response.statusCode, 201);
-    console.log(response.body);
     assert.strictEqual(response.body.UserEmail, 'test@example.com');
   });
 
