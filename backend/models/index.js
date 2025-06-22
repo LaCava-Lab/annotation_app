@@ -6,6 +6,7 @@ const isTest = process.env.NODE_ENV === 'test';
 const sequelize = new Sequelize(isTest ? process.env.TEST_DB_URL : process.env.DB_URL, {
   dialect: 'postgres',
   protocol: 'postgres',
+  logging: false,
   dialectOptions: {
     ssl: { require: true, rejectUnauthorized: false }
   }
