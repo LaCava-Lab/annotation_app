@@ -1,5 +1,6 @@
 import requests
 import json
+import uuid
 
 BACKEND_URL = "http://localhost:3000"
 
@@ -244,3 +245,64 @@ def fetch_fulltext_by_pmid(pmid, token):
             return []
     except Exception:
         return []
+
+# -- Annotation saving functions --
+
+def save_annotations_to_db(session_state, user_key, pmid, token):
+    """
+    Save all annotated information from session_state to the backend tables.
+    """
+    session_id = f"{user_key}_{pmid}"
+
+    # 1. Gather all experiments and solutions
+    experiments = []
+    solutions = []
+    for section, exp_list in session_state["subpages"][1].get("experiments", {}).items():
+        for exp in exp_list:
+            experiment_id = str(uuid.uuid4())
+            experiments.append({
+                "ExperimentID": experiment_id,
+                "SessionID": session_id,
+                "name": exp["text"],
+                "name_section": exp["section"],
+                "name_start": exp["start"],
+                "name_end": exp["end"],
+                "name_alt": exp.get("name_alt", ""),
+                "type": exp["type"]
+            })
+            # Solutions for this experiment
+            for sol_list in exp.get("solutions", []):
+                for sol in sol_list:
+                    solution_id = str(uuid.uuid4())
+                    solutions.append({
+                        "SolutionID": solution_id,
+                        "ExperimentID": experiment_id,
+                        "name": sol["text"],
+                        "name_section": exp["section"],
+                        "name_start": sol["start"],
+                        "name_end": sol["end"],
+                        "name_alt": sol.get("name_alt", ""),
+                        "type": sol.get("type", exp["type"]),
+                    })
+
+    # 2. POST all experiments at once
+    if experiments:
+        resp = requests.post(
+            f"{BACKEND_URL}/experiments",
+            json=experiments,
+            cookies={"token": token}
+        )
+        print("POST /experiments:", resp.status_code, resp.text)
+
+    # 3. POST all solutions at once
+    if solutions:
+        resp = requests.post(
+            f"{BACKEND_URL}/solutions",
+            json=solutions,
+            cookies={"token": token}
+        )
+        print("POST /solutions:", resp.status_code, resp.text)
+
+    # 4. (Baits, interactors, chemistry)
+
+    return True

@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
+from src.database import save_annotations_to_db
 from process_interchange import detail_picker
 
 class Subpage:
@@ -451,6 +452,8 @@ class Subpage:
                         del st.session_state["pages"]
                     if "current_page" in st.session_state:
                         del st.session_state["current_page"]
+
+                    save_annotations_to_db(st.session_state, user_key, pmid, token)
 
                     st.set_option("client.showSidebarNavigation", True)
                     st.switch_page("pages/7_thanks.py")

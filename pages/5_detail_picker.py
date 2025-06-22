@@ -137,6 +137,10 @@ if "subpages" not in st.session_state:
     st.session_state.subpages[0]["visited"] = 1
     st.session_state.active_experiment_widget = {}
 
+if "current_page" not in st.session_state:
+    st.session_state.current_page = {"subpage": st.session_state.subpages[0], "index": 0}
+    st.session_state.subpages[0]["visited"] = 1
+    
 load_state_from_backend(cookies, pmid)
 
 subpages_data = []
