@@ -44,7 +44,7 @@ router.post('/signup', async (req, res) => {
       ClosedSessionID: []
     });
 
-    res.status(201).json({ message: 'User created', userKey: newUserKey });
+    res.status(201).json({ message: 'User created', userKey: newUserKey, UserEmail: UserEmail });
   } catch (err) {
     console.error('Signup error:', err); 
     res.status(500).json({ error: err.message });

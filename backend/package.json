@@ -13,6 +13,11 @@
     "sequelize": "^6.37.7"
   },
   "scripts": {
+    "test": "cross-env  NODE_ENV=test node --test",
     "start": "nodemon -L index.js"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "supertest": "^7.1.1"
   }
 }

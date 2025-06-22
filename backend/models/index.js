@@ -1,7 +1,9 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-const sequelize = new Sequelize(process.env.DB_URL, {
+const isTest = process.env.NODE_ENV === 'test';
+
+const sequelize = new Sequelize(isTest ? process.env.TEST_DB_URL : process.env.DB_URL, {
   dialect: 'postgres',
   protocol: 'postgres',
   dialectOptions: {
