@@ -20,6 +20,9 @@ class Subpage:
         self.prev_page_context = None
         self.experiments = []
 
+    def format_bait_props(self,text):
+        return f"({text})" if text else ""
+
     def assign_experiments(self, experiments):
         self.experiments = experiments
 
@@ -96,8 +99,197 @@ class Subpage:
                     return "non-PI"
                 else:
                     return "PI"
+            elif self.sidebar_content["widget"] == "EXPERIMENT_DETAILS":
+                experiment_names = [exp["text"] for exp in self.experiments]
+                experiment_name = st.selectbox("Experiment", experiment_names)
+                add_option = st.radio("Add :", ["Bait", "Interactor(s)"], horizontal=True, label_visibility="collapsed")
+                if add_option == "Bait":
+                    select_type = None
+                    select_control = None
+
+                    st.subheader("Bait is:")
+                    col4, col5 = st.columns(2)
+                    with col4:
+                        select_type = st.selectbox("Select Type", ["Protein", "RNA", "DNA", "RNA:DNA hybrid"], key="bait_type_1")
+                    with col5:
+                        select_control = st.selectbox("Select Control", ["Negative", "Positive", "No"], key="bait_type_2")
+
+                    bait_info_type = st.radio("Bait has:", ["Select Bait name", "Select Bait tag", "Select Bait species"])
+                    st.session_state.select_type = f"bait_{bait_info_type.strip().split()[-1]}"
+
+                    flattened = [item for sublist in self.selections if sublist for item in sublist]
+                    last_item = flattened[-1] if flattened else {}
+
+                    if st.session_state.select_type.startswith("bait_name"):
+                        st.session_state.current_bait["name"] = last_item
+                    elif st.session_state.select_type.startswith("bait_tag"):
+                        st.session_state.current_bait["tag"] = last_item
+                    elif st.session_state.select_type.startswith("bait_species"):
+                        st.session_state.current_bait["species"] = last_item
+
+                    if st.session_state.current_bait["name"] != {}:
+                        st.write(f"Name: {st.session_state.current_bait['name']['text']}")
+                    if st.session_state.current_bait["tag"] != {}:
+                        st.write(f"Tag: {st.session_state.current_bait['tag']['text']}")
+                    if st.session_state.current_bait["species"] != {}:
+                        st.write(f"Species: {st.session_state.current_bait['species']['text']}")
+
+                    st.button("Add", on_click=lambda: self.experiment_details_baits(experiment_name,select_type,select_control), use_container_width=True)
+
+                    df = None
+                    for exp in self.experiments:
+                        if exp["text"] == experiment_name:
+                            df = pd.DataFrame(exp["baits"]).drop(columns=["interactors"], errors="ignore")
+                    if not df.empty:
+                        st.data_editor(
+                            df,
+                            use_container_width=True,
+                            column_config={
+                                "type": st.column_config.TextColumn("Type"),
+                                "control": st.column_config.TextColumn("Control"),
+                                "name": st.column_config.TextColumn("Name"),
+                                "tag": st.column_config.TextColumn("Tag"),
+                                "species": st.column_config.TextColumn("Species"),
+                            },
+                            disabled=["type", "control", "name", "tag","species"],
+                            key="exp_editor_1")
+                else:
+                    for i,experiment in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
+                        if experiment["text"] == experiment_name:
+                            if len(st.session_state.subpages[self.index - 1]["experiments"][i]["baits"]) == 0:
+                                st.warning("There are no baits for this experiment!")
+                                return "PI"
+
+                            else:
+                                bait_names = [bait["name"] for bait in st.session_state.subpages[self.index - 1]["experiments"][i]["baits"]]
+                                bait_name = st.selectbox("Bait", bait_names)
+                                current_bait = []
+                                for bait in st.session_state.subpages[self.index - 1]["experiments"][i]["baits"]:
+                                    if bait["name"] == bait_name:
+                                        cleaned = {k: v for k, v in bait.items() if k != "interactors"}
+                                        current_bait = [cleaned]
+                                # st.table(current_bait)
+                                st.data_editor(
+                                    current_bait,
+                                    use_container_width=True,
+                                    column_config={
+                                        "type": st.column_config.TextColumn("Type"),
+                                        "control": st.column_config.TextColumn("Control"),
+                                        "name": st.column_config.TextColumn("Name"),
+                                        "tag": st.column_config.TextColumn("Tag"),
+                                        "species": st.column_config.TextColumn("Species"),
+                                    },
+                                    disabled=["type", "control", "name", "tag","species"],
+                                    key="exp_editor_2")
+                                st.subheader("Interactor is:")
+                                select_type = st.selectbox("Select Type", ["Protein", "RNA", "DNA", "RNA:DNA hybrid"], key=f"{current_bait[0]['name']}")
+
+                                interactor_info_type = st.radio("Interactor has:", ["Select Interactor name", "Select Interactor species"])
+                                st.session_state.select_type = f"interactor_{interactor_info_type.strip().split()[-1]}"
+
+                                flattened = [item for sublist in self.selections if sublist for item in sublist]
+                                last_item = flattened[-1] if flattened else {}
+
+                                if st.session_state.select_type.startswith("interactor_name"):
+                                    st.session_state.current_interactor["name"] = last_item
+                                elif st.session_state.select_type.startswith("interactor_species"):
+                                    st.session_state.current_interactor["species"] = last_item
+
+                                if st.session_state.current_interactor["name"] != {}:
+                                    st.write(f"Name: {st.session_state.current_interactor['name']['text']}")
+                                if st.session_state.current_interactor["species"] != {}:
+                                    st.write(f"Species: {st.session_state.current_interactor['species']['text']}")
+
+                                st.button("Add", on_click=lambda: self.experiment_details_interactors(experiment_name,bait_name,select_type), use_container_width=True)
+
+                                df = None
+                                for exp in self.experiments:
+                                    if exp["text"] == experiment_name:
+                                        for bait in exp["baits"]:
+                                            if bait["name"] == bait_name:
+                                                df = pd.DataFrame(bait["interactors"])
+                                if not df.empty:
+                                    st.data_editor(
+                                        df,
+                                        use_container_width=True,
+                                        column_config={
+                                            "type": st.column_config.TextColumn("Type"),
+                                            "name": st.column_config.TextColumn("Name"),
+                                            "species": st.column_config.TextColumn("Species"),
+                                        },
+                                        disabled=["type", "name","species"],
+                                        key="exp_editor_1")
+
+
+
+                return "PI"
+
+            elif self.sidebar_content["widget"] == "SOLUTION_DETAILS":
+
+                return "PI"
 
             return "PI"
+
+    def experiment_details_interactors(self,experiment_name, bait_name,type):
+        missing_fields = []
+
+        # Check which fields are empty
+        for field in ["name", "species"]:
+            if st.session_state.current_interactor.get(field, {}) == {}:
+                missing_fields.append(field)
+
+        # If any are missing, show warnings
+        if missing_fields:
+            for field in missing_fields:
+                st.warning(f"Select {field}")
+            return
+
+        option = "interactors"
+        for i,experiment in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
+            if experiment["text"] == experiment_name:
+                baits = st.session_state.subpages[self.index - 1]["experiments"][i]["baits"]
+                for i,bait in enumerate(baits):
+                    if bait["name"] == bait_name:
+                        st.session_state.subpages[self.index - 1]["experiments"][i]["baits"][i]["interactors"].append({
+                            "type": type,
+                            "name": st.session_state.current_interactor['name']['text'],
+                            "species": st.session_state.current_interactor['species']['text']
+                        })
+                # for
+
+
+    def experiment_details_baits(self,experiment_name,type,control):
+        missing_fields = []
+
+        # Check which fields are empty
+        for field in ["name", "tag", "species"]:
+            if st.session_state.current_bait.get(field, {}) == {}:
+                missing_fields.append(field)
+
+        # If any are missing, show warnings
+        if missing_fields:
+            for field in missing_fields:
+                st.warning(f"Select {field}")
+            return
+
+        option = "baits"
+
+        for i,experiment in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
+            if experiment["text"] == experiment_name:
+                st.session_state.subpages[self.index - 1]["experiments"][i][option].append({
+                    "type": type,
+                    "control": control,
+                    "name":st.session_state.current_bait['name']['text'],
+                    "tag": st.session_state.current_bait['tag']['text'],
+                    "species": st.session_state.current_bait['species']['text'],
+                    "interactors": []
+                })
+        st.session_state.current_bait = {
+            "name": {},
+            "tag": {},
+            "species": {}
+        }
+
 
     def colored_card(self,title, subtitle, bg_color="#1f77b4", text_color="#ffffff", key=None):
         if key is None:
@@ -156,6 +348,7 @@ class Subpage:
         tabs = st.tabs(tab_names)
         results = []
         absolute_index = st.session_state.active_experiment_widget.get("absolute_index")
+        select_type = st.session_state.select_type
 
         for i, (name, tab) in enumerate(zip(tab_names, tabs)):
             tab_annotations = []
@@ -171,10 +364,11 @@ class Subpage:
                     labels=labels,
                     text_height=400,
                     annotations=tab_annotations,
-                    key=f"text_highlighter_{name}_{''.join(self.label.split(' '))}_{absolute_index}"
+                    key=f"text_highlighter_{name}_{''.join(self.label.split(' '))}_{absolute_index}_{select_type}"  # Assign a unique key for each tab
                 )
                 results.append(result)
         self.selections = results
+
 
     def display_coffee_break_1(self):
         experiments = []
@@ -267,23 +461,39 @@ class Subpage:
                 </div>
             """, unsafe_allow_html=True)
 
+        experiment_names = [exp["text"] for exp in self.experiments]
+        experiment_name = None
+        bait_name = None
+        bait = {}
+
         col1, col2 = st.columns([1, 1])
         with col1:
-            st.selectbox("Experiment", ["Experiment"], key="experiment_select")
+            experiment_name = st.selectbox("Experiment", experiment_names, key="experiment_select")
         with col2:
-            st.selectbox("Bait 1", ["Bait 1"], key="bait_select")
+            baits = []
+            for exp in self.experiments:
+                if exp["text"] == experiment_name:
+                    baits = exp["baits"]
+            baits_names = [bait["name"] for bait in baits]
+            bait_name = st.selectbox("Bait 1", baits_names, key="bait_select")
+
+        for exp in self.experiments:
+            if exp["text"] == experiment_name:
+                for bait_obj in exp["baits"]:
+                    if bait_obj["name"] == bait_name:
+                        bait = bait_obj
         st.markdown("### Bait details:")
 
         bait_df = pd.DataFrame([
             {
-                "Bait type 1": "Protein",
-                "Bait type 2": "Experimental",
-                "Name": "ORF2p",
+                "Bait type": bait["type"],
+                "Bait control": bait["control"],
+                "Name": bait["name"],
                 "Alt name": "",
-                "Tag": "N/A",
+                "Tag": bait["tag"],
                 "Alt tag": "",
-                "Species": "HEK293T",
-                "Alt. species": "H.sapiens",
+                "Species": bait["species"],
+                "Alt. species": "",
             }
         ])
         st.data_editor(
@@ -307,13 +517,13 @@ class Subpage:
 
         interactor_df = pd.DataFrame([
             {
-                "Bait ref": 1,
-                "Interactor type": "protein",
-                "Name": "",
-                "Alternative name": "N/A",
-                "Species": "HEK293T",
-                "Alternative species": "H.sapiens",
-            }
+                "Bait ref": bait["name"],
+                "Interactor type": interactor["type"],
+                "Name": interactor["name"],
+                "Alternative name": "",
+                "Species": interactor["species"],
+                "Alternative species": "",
+            } for interactor in bait["interactors"]
         ])
         st.data_editor(
             interactor_df,
