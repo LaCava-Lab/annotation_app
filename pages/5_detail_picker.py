@@ -131,9 +131,10 @@ if "subpages" not in st.session_state:
          "sidebar_content": {
              "subtitle": "Step 3/4 : Experiment details",
              "description": "For each of the PI laboratory experiments that you identified in the first step, find the details we ask  below. For each selected question you will need to find the answer in the text of the paper (\"Select\" button). In the case the information is split in multiple locations in the paper, then you can append more text to your current selection by pressing the \"Add to selection\" button, repeating as many times as necessary. The \"Select\" button is reset when you move on to the next question.",
-             "widget": ""
+             "widget": "EXPERIMENT_DETAILS"
          },
          "selections": [],
+         "experiments": {},
          "highlighter_labels":[
             ("Select", "#82645E"),
          ],
@@ -145,7 +146,7 @@ if "subpages" not in st.session_state:
          "sidebar_content": {
              "subtitle": "Step 4/4 : Solution composition",
              "description": "For each of the PI solutions that you identified in the second step, find their detailed composition in the text after selecting the right button for the type of chemical. If the composition of a solution used in the experiments is not described in detail but instead is offered as a reference to previous work, then select that reference in-text withe the corresponding button selected.",
-             "widget": ""
+             "widget": "SOLUTION_DETAILS"
          },
          "selections": [],
          "highlighter_labels":[
@@ -161,9 +162,23 @@ if "subpages" not in st.session_state:
          "index": 4,
          "visited": 0},
     ]
+    # st.session_state.current_page = {"subpage": st.session_state.subpages[2], "index": 2}
+    # st.session_state.subpages[2]["visited"] = 1
+    # st.session_state.active_experiment_widget = {}
+
     st.session_state.current_page = {"subpage": st.session_state.subpages[0], "index": 0}
     st.session_state.subpages[0]["visited"] = 1
     st.session_state.active_experiment_widget = {}
+    st.session_state.select_type = ""
+    st.session_state.current_bait = {
+        "name": {},
+        "tag": {},
+        "species": {}
+    }
+    st.session_state.current_interactor = {
+        "name": {},
+        "species": {}
+    }
 
 subpages_data = []
 for i,subpage in enumerate(st.session_state.subpages):
@@ -175,7 +190,7 @@ for i,subpage in enumerate(st.session_state.subpages):
     highlighter_labels = subpage["highlighter_labels"]
     index = subpage["index"]
 
-    if "experiments" in subpage:
+    if "experiments" in subpage and index == 2:
 
         if st.session_state.active_experiment_widget:
             exp = st.session_state.active_experiment_widget
@@ -231,11 +246,11 @@ def save():
     #SAVE EXPERIMENTS
     if index < len(st.session_state.subpages) - 1:
         next_page_index = index + 1
-        if "experiments" in st.session_state.subpages[next_page_index]:
+        if "experiments" in st.session_state.subpages[next_page_index] and index == 0:
             experiments = {
                 tab_name: [
                     {**item,
-                     "solutions": [],
+                     "solutions": item.get("solutions", []),
                      "section": tab_name,
                      "type": page.check_tag(item["tag"]),
                      "absolute_index" :sum(len(page.selections[k]) for k in range(i)) + j,
@@ -245,6 +260,15 @@ def save():
                 ]
                 for i, tab_name in enumerate(tab_names)
             }
+            st.session_state.subpages[next_page_index]["experiments"] = experiments
+        if "experiments" in st.session_state.subpages[next_page_index] and index == 1:
+            experiments = [{
+                **item,
+                "baits": item.get("baits", []),
+                "solutions": [{
+                    **inner_item
+                } for inner_sublist in item["solutions"] for inner_item in inner_sublist]
+            } for sublist in st.session_state.subpages[index]["experiments"].values() for item in sublist]
             st.session_state.subpages[next_page_index]["experiments"] = experiments
 
 pageSelected = BreadCrumbs(st.session_state.current_page["subpage"], pages=st.session_state.subpages)
@@ -304,11 +328,16 @@ if not page.coffee_break_display:
 
 
     page.active_experiment = st.session_state.active_experiment_widget
+    page.select_type = st.session_state.select_type
 
     st.session_state.active_experiment = page.sidebar_widget()
 
     # print(st.session_state.subpages[page.index - 1].get("experiments"))
     # print(st.session_state)
+
+    # reload select
+    if page.select_type != st.session_state.select_type:
+        st.rerun()
 
     # reload solutions in experiments
     if page.active_experiment != st.session_state.active_experiment_widget:
