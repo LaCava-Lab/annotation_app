@@ -2,6 +2,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const express = require('express');
 const app = express();
 require('dotenv').config();
+const path = require('path');
 const authenticateToken = require('./middleware/auth');
 const userRoutes = require('./routes/users');
 const paperRoutes = require('./routes/papers');
@@ -27,5 +28,7 @@ app.use('/solutions', authenticateToken, solutionRoutes);
 app.use('/baits', authenticateToken, baitRoutes);
 app.use('/interactors', authenticateToken, interactorRoutes);
 app.use('/chemistrys', authenticateToken, chemistryRoutes);
-
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'api-docs.html'));
+});
 module.exports = app;

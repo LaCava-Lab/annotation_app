@@ -1,0 +1,103 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Annotation App API Documentation</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; margin: 2em; background-color: #fafafa; }
+    h1, h2, h3 { color: #333; }
+    code, pre { background: #f2f2f2; padding: 0.2em 0.4em; display: inline-block; }
+    section { margin-bottom: 2em; }
+    .auth-note { color: #d9534f; }
+    ul { margin-top: 0.2em; }
+  </style>
+</head>
+<body>
+  <h1>📚 Annotation App API Documentation</h1>
+  <p>This documentation lists all available API routes for the annotation platform.</p>
+
+  <section>
+    <h2>🔐 Authentication</h2>
+    <p>Most routes require a Bearer Token in the <code>Authorization</code> header after logging in.</p>
+    <pre>Authorization: Bearer &lt;token&gt;</pre>
+  </section>
+
+  <section>
+    <h2>👤 Auth Routes</h2>
+    <ul>
+      <li><code>POST /auth/signup</code> - Register a new user</li>
+      <li><code>POST /auth/login</code> - Log in and receive a token</li>
+      <li><code>POST /auth/logout</code> - Log out</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>👥 User Routes</h2>
+    <ul><li><code>GET /users</code> - List all users</li></ul>
+  </section>
+
+  <section>
+    <h2>📄 Paper Routes</h2>
+    <ul><li><code>GET /papers</code> - All papers (requires auth)</li></ul>
+  </section>
+
+  <section>
+    <h2>📰 FullText</h2>
+    <ul><li><code>GET /fulltext?filename=PMC10546312</code> - Get fulltext by filename</li></ul>
+  </section>
+
+  <section>
+    <h2>🧠 Session State</h2>
+    <ul>
+      <li><code>GET /sessions/:id</code> - Get session state by ID</li>
+      <li><code>POST /sessions</code> - Create a session state</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>🧪 Experiments</h2>
+    <ul>
+      <li><code>GET /experiments</code> - Get all experiments</li>
+      <li><code>POST /experiments</code> - Add experiments in bulk</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>🧴 Solutions</h2>
+    <ul>
+      <li><code>GET /solutions</code></li>
+      <li><code>POST /solutions</code></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>🧲 Baits</h2>
+    <ul>
+      <li><code>GET /baits</code></li>
+      <li><code>POST /baits</code></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>🧬 Interactors</h2>
+    <ul>
+      <li><code>GET /interactors</code></li>
+      <li><code>POST /interactors</code></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>🧪 Chemistry</h2>
+    <ul>
+      <li><code>GET /chemistrys</code></li>
+      <li><code>POST /chemistrys</code></li>
+    </ul>
+  </section>
+
+  <footer>
+    <hr/>
+    <p>🧠 Made with Express + Sequelize + Postgres – <em>Test with Postman or REST Client</em></p>
+  </footer>
+</body>
+</html>
