@@ -252,14 +252,18 @@ def save_annotations_to_db(session_state, user_key, pmid, token):
     """
     Save all annotated information from session_state to the backend tables.
     """
+
     session_id = f"{user_key}_{pmid}"
 
     # 1. Gather all experiments and solutions
     experiments = []
     solutions = []
+    experiment_id_map = {}  # Map experiment text to ExperimentID for reference
+
     for section, exp_list in session_state["subpages"][1].get("experiments", {}).items():
         for exp in exp_list:
             experiment_id = str(uuid.uuid4())
+            experiment_id_map[exp["text"]] = experiment_id
             experiments.append({
                 "ExperimentID": experiment_id,
                 "SessionID": session_id,
@@ -285,22 +289,80 @@ def save_annotations_to_db(session_state, user_key, pmid, token):
                         "type": sol.get("type", exp["type"]),
                     })
 
-    # 2. POST all experiments at once
+    # 2. Gather baits and interactors from Experiment Details
+    baits = []
+    interactors = []
+    for exp in session_state["subpages"][2].get("experiments", []):
+        experiment_id = experiment_id_map.get(exp["text"])
+        if not experiment_id:
+            continue
+        for bait in exp.get("baits", []):
+            bait_id = str(uuid.uuid4())
+            baits.append({
+                "BaitID": bait_id,
+                "ExperimentID": experiment_id,
+                "name": bait.get("name", ""),
+                "name_section": exp.get("section", ""),
+                "name_start": bait.get("start", None),
+                "name_end": bait.get("end", None),
+                "name_alt": bait.get("name_alt", ""),
+                "species_name": bait.get("species", ""),
+                "species_name_section": "",
+                "species_name_start": None,
+                "species_name_end": None,
+                "species_name_alt": "",
+                "isControl": bait.get("control", ""),
+                "bait_type": bait.get("type", ""),
+            })
+            for interactor in bait.get("interactors", []):
+                interactor_id = str(uuid.uuid4())
+                interactors.append({
+                    "InteractorID": interactor_id,
+                    "BaitID": bait_id,
+                    "ExperimentID": experiment_id,
+                    "name": interactor.get("name", ""),
+                    "name_section": exp.get("section", ""),
+                    "name_start": interactor.get("start", None),
+                    "name_end": interactor.get("end", None),
+                    "name_alt": interactor.get("name_alt", ""),
+                    "species_name": interactor.get("species", ""),
+                    "species_name_section": "",
+                    "species_name_start": None,
+                    "species_name_end": None,
+                    "species_name_alt": "",
+                    "type": interactor.get("type", ""),
+                })
+
+    # 3. POST all experiments at once
     if experiments:
-        resp = requests.post(
+        requests.post(
             f"{BACKEND_URL}/experiments",
             json=experiments,
             cookies={"token": token}
         )
 
-    # 3. POST all solutions at once
+    # 4. POST all solutions at once
     if solutions:
-        resp = requests.post(
+        requests.post(
             f"{BACKEND_URL}/solutions",
             json=solutions,
             cookies={"token": token}
         )
 
-    # 4. (Baits, interactors, chemistry)
+    # 5. POST all baits at once
+    if baits:
+        requests.post(
+            f"{BACKEND_URL}/baits",
+            json=baits,
+            cookies={"token": token}
+        )
+
+    # 6. POST all interactors at once
+    if interactors:
+        requests.post(
+            f"{BACKEND_URL}/interactors",
+            json=interactors,
+            cookies={"token": token}
+        )
 
     return True

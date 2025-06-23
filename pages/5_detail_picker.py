@@ -333,7 +333,7 @@ if not page.coffee_break_display:
     st.session_state.active_experiment = page.sidebar_widget()
 
     # print(st.session_state.subpages[page.index - 1].get("experiments"))
-    # print(st.session_state)
+    print(st.session_state)
 
     # reload select
     if page.select_type != st.session_state.select_type:
