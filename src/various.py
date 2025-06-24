@@ -115,9 +115,36 @@ def handle_redirects(cookies : CookieManager):
     if "userKey" not in st.session_state:
         st.session_state["userKey"] = cookies.get("userKey", None)
 
-    if not st.session_state.logged_in:
+    token = cookies.get("token") or st.session_state.get("token")
+    if not st.session_state.logged_in or not token:
         st.set_option("client.showSidebarNavigation", False)
         st.switch_page("login.py")
+        st.stop()
+
+    # Check if token has not expired
+    import requests
+    BACKEND_URL = "http://localhost:3000"
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/users/me",
+            params={"userKey": st.session_state["userKey"]},
+            cookies={"token": token},
+            timeout=5
+        )
+        if resp.status_code == 401 or resp.status_code == 403:
+            # Token is invalid/expired
+            st.session_state.logged_in = False
+            cookies["logged_in"] = False
+            cookies["token"] = ""
+            cookies.save()
+            st.set_option("client.showSidebarNavigation", False)
+            st.switch_page("login.py")
+            st.stop()
+    except Exception as e:
+        st.error(f"Error checking authentication: {e}")
+        st.set_option("client.showSidebarNavigation", False)
+        st.switch_page("login.py")
+        st.stop()
 
 # Helper to get token
 def get_token(cookies : CookieManager):
