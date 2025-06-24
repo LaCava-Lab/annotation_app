@@ -65,7 +65,7 @@ def get_pmid(cookies: CookieManager, redir: bool = True) -> str:
     # Check the backend database for the user's current paper in progress
     user_key = st.session_state.get("userKey") or cookies.get("userKey")
     token = cookies.get("token") or st.session_state.get("token")
-    BACKEND_URL = "http://localhost:3000"
+    BACKEND_URL = "https://seal-app-c5ety.ondigitalocean.app"
     if user_key and token:
         try:
             resp = requests.get(
