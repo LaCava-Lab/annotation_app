@@ -1,6 +1,6 @@
 import requests
 
-BACKEND_URL = "http://localhost:3000"
+BACKEND_URL = "https://seal-app-c5ety.ondigitalocean.app"
 
 # -- User Info and Authentication Functions --
 
