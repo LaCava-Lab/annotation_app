@@ -6,7 +6,7 @@ _RELEASE = True
 if not _RELEASE:
     _component_func = components.declare_component(
         "TableSelect",
-        url="http://localhost:3001",
+        url="https://seal-app-c5ety.ondigitalocean.app",
     )
 else:
     parent_dir = os.path.dirname(os.path.abspath(__file__))
