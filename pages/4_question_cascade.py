@@ -2,7 +2,7 @@ import streamlit as st
 from process_interchange import question_cascade
 from streamlit_cookies_manager import CookieManager
 from src.various import handle_redirects, get_selected_paper, get_token, get_user_key
-from src.database import fetch_paper_info, update_paper_in_progress
+from src.database import fetch_paper_info, update_paper_in_progress, save_session_state
 
 # Set page config
 st.set_page_config(page_title=question_cascade["title"], layout="wide", initial_sidebar_state="collapsed")
@@ -177,4 +177,6 @@ with col2:
         st.set_option("client.showSidebarNavigation", False)
         user_key = get_user_key(cookies)
         update_paper_in_progress(user_key, pmid, token)
+        # Create initial session state in backend
+        save_session_state(user_key, pmid, {}, token)
         st.switch_page("pages/5_detail_picker.py")

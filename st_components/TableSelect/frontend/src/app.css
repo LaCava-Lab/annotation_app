@@ -5,51 +5,61 @@
     -ms-user-select: none; /* For older versions of IE */
 }
 
-.TableSelect_Header{
+.TableSelect_Header {
     margin-bottom: 10px;
-    padding:10px;
+    padding: 10px;
 }
 
-.TableSelect_Body{
+.TableSelect_Body {
 
 }
 
-.flex{
+.flex {
     display: flex;
 }
 
-.flex-1{
+.flex-1 {
     flex: 1;
 }
 
-.TableSelect_Col_1{
+.TableSelect_Col_1 {
 
 }
 
-.TableSelect_Col_2{
+.TableSelect_Col_2 {
     min-width: 50px;
 }
 
-.TableSelect_Row{
-/*    background: purple;*/
+.TableSelect_Row {
+    /*    background: purple;*/
     border-radius: 15px;
-    padding:10px;
+    padding: 10px;
     margin-bottom: 10px;
     transition: .2s;
     border: 2px solid;
 }
 
-.TableSelect_Row:hover{
+.TableSelect_Row:hover {
     border-radius: 15px;
-    padding:10px;
+    padding: 10px;
     margin-bottom: 10px;
     cursor: pointer;
     opacity: 0.6;
 }
 
-.TableSelect_Row.active{
-/*    background: rgba(250, 250, 250, 0.2);*/
+.TableSelect_Row.active {
+    /*    background: rgba(250, 250, 250, 0.2);*/
     border-radius: 15px;
-    padding:10px;
+    padding: 10px;
     margin-bottom: 10px;
+}
+
+.solution {
+    padding: 10px;
+    border-radius: 6px;
+    height: fit-content;
+    font-size: 14px;
+    margin-top: 10px;
+/*    opacity: .5;*/
+    filter: brightness(90%);
 }

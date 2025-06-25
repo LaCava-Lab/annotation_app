@@ -13,6 +13,6 @@ else:
     build_dir = os.path.join(parent_dir, "frontend/build")
     _component_func = components.declare_component("BreadCrumbs", path=build_dir)
 
-def BreadCrumbs(links,activeLink,pages,key=None):
-    component_value = _component_func(links=links,activeLink=activeLink,pages=pages,key=key, default=0)
+def BreadCrumbs(activeLink,pages,key=None):
+    component_value = _component_func(activeLink=activeLink,pages=pages,key=key, default=0)
     return component_value

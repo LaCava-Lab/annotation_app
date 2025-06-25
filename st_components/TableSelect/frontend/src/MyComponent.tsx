@@ -6,23 +6,25 @@ import {
 import React, { useCallback, useEffect, useMemo, useState, ReactElement } from "react"
 
 type BUTTON_2_COLUMNS = {
-  index: number,
-  name: string,
+  absolute_index: number,
+  text: string,
   type: string,
   background_color:string,
-  text_color:string
+  text_color:string,
+  solutions: any[]
 }
 
 type BUTTON_1_COLUMNS = {
-  index: number,
-  name: string,
+  absolute_index: number,
+  text: string,
   background_color:string,
-  text_color:string
+  text_color:string,
+  solutions: any[]
 }
 
 function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
   const {header, buttons, columns} = args
-  console.log(buttons)
+//  console.log(buttons)
   const [isActive, setIsActive] = useState(0)
 
 
@@ -43,13 +45,27 @@ function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
     }
   }
 
+  const style_solution = (background_color: string,text_color:string): React.CSSProperties => {
+    let backgroundColor = `${background_color}`
+    let color = `${text_color}`
+
+    return {
+      color,
+      backgroundColor
+    }
+  }
+
   useEffect(() => {
-    Streamlit.setFrameHeight()
     Streamlit.setComponentValue(buttons[isActive])
   }, [])
 
+  useEffect(() => {
+    Streamlit.setFrameHeight()
+  }, [buttons])
+
   const setActive = useCallback((button) => {
     setIsActive(button)
+//    console.log(button)
     Streamlit.setComponentValue(buttons[button])
 //    Streamlit.setComponentValue(buttons[button])
 //    if (isActive > 0)
@@ -64,20 +80,33 @@ function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
     return isActive === category;
   }, [isActive])
 
-  const button_two_collumns = ({ index,name,type,background_color,text_color }: BUTTON_2_COLUMNS) : ReactElement => {
+  const button_two_collumns = ({ absolute_index,text,type,background_color,text_color, solutions }: BUTTON_2_COLUMNS) : ReactElement => {
     return (
-      <div key={name} style={style(index,background_color,text_color)} onClick={() => setActive(index)} className={`TableSelect_Row flex ${isRowActive(index) ? 'active' : ''}`}>
-        <div className="TableSelect_Col_1">{name}</div>
-        <div className="flex-1"></div>
-        <div className="TableSelect_Col_2">{type}</div>
+      <div key={text} style={style(absolute_index,background_color,text_color)} onClick={() => setActive(absolute_index)} className={`TableSelect_Row ${isRowActive(absolute_index) ? 'active' : ''}`}>
+        <div className="flex">
+          <div className="TableSelect_Col_1">{text}</div>
+          <div className="flex-1"></div>
+          <div className="TableSelect_Col_2">{type}</div>
+        </div>
+        <div className="solutions">
+          {solutions.map((solution, i) => (
+            <div
+              key={i}
+              style={style_solution(solution.background_color,solution.text_color)}
+              className="solution"
+            >
+              {solution.text}
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
 
-  const button_one_collumn = ({ index,name,background_color,text_color }: BUTTON_1_COLUMNS) : ReactElement => {
+  const button_one_collumn = ({ absolute_index,text,background_color,text_color }: BUTTON_1_COLUMNS) : ReactElement => {
     return (
-      <div key={name} style={style(index,background_color,text_color)} onClick={() => setActive(name)} className={`TableSelect_Row flex ${isRowActive(name) ? 'active' : ''}`}>
-        <div className="TableSelect_Col_1">{name}</div>
+      <div key={text} style={style(absolute_index,background_color,text_color)} onClick={() => setActive(text)} className={`TableSelect_Row flex ${isRowActive(text) ? 'active' : ''}`}>
+        <div className="TableSelect_Col_1">{text}</div>
       </div>
     )
   }
@@ -94,7 +123,7 @@ function MyComponent({ args, disabled, theme }: ComponentProps): ReactElement {
         ) : null}
       </div>
       <div className="TableSelect_Body">
-        {columns === 2 ? buttons.filter((button:any) => button.name && button.type).map(button_two_collumns) : buttons.filter((button:any) => button.name).map(button_one_collumn)}
+        {columns === 2 ? buttons.filter((button:any) => button.text && button.type).map(button_two_collumns) : buttons.filter((button:any) => button.text).map(button_one_collumn)}
       </div>
     </span>
   )

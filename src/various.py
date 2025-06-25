@@ -2,7 +2,7 @@ from streamlit_cookies_manager import CookieManager
 import streamlit as st
 import pandas as pd
 import random
-from src.database import fetch_all_papers
+from src.database import fetch_all_papers, fetch_session_state
 
 def evaluate_userID_format(userid):
     if not userid.isdigit():
@@ -115,9 +115,36 @@ def handle_redirects(cookies : CookieManager):
     if "userKey" not in st.session_state:
         st.session_state["userKey"] = cookies.get("userKey", None)
 
-    if not st.session_state.logged_in:
+    token = cookies.get("token") or st.session_state.get("token")
+    if not st.session_state.logged_in or not token:
         st.set_option("client.showSidebarNavigation", False)
         st.switch_page("login.py")
+        st.stop()
+
+    # Check if token has not expired
+    import requests
+    BACKEND_URL = "http://localhost:3000"
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/users/me",
+            params={"userKey": st.session_state["userKey"]},
+            cookies={"token": token},
+            timeout=5
+        )
+        if resp.status_code == 401 or resp.status_code == 403:
+            # Token is invalid/expired
+            st.session_state.logged_in = False
+            cookies["logged_in"] = False
+            cookies["token"] = ""
+            cookies.save()
+            st.set_option("client.showSidebarNavigation", False)
+            st.switch_page("login.py")
+            st.stop()
+    except Exception as e:
+        st.error(f"Error checking authentication: {e}")
+        st.set_option("client.showSidebarNavigation", False)
+        st.switch_page("login.py")
+        st.stop()
 
 # Helper to get token
 def get_token(cookies : CookieManager):
@@ -184,3 +211,50 @@ def refresh_paper_list(all_papers):
     for k in ["a", "b", "c", "d", "e"]:
         if k in st.session_state:
             del st.session_state[k]
+
+def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_doi_by_pmid):
+    """
+    Fetches fulltext and DOI for a paper by PMID, normalizes, and returns (df, tab_names, doi_link).
+    """
+    def normalize_section_name(section):
+        s = section.strip().upper()
+        if "INTRO" in s:
+            return "INTRODUCTION"
+        if "METHOD" in s:
+            return "METHODS"
+        if "RESULT" in s:
+            return "RESULTS"
+        if "DISCUSS" in s:
+            return "DISCUSSION"
+        if "SUPPL" in s:
+            return "SUPPLEMENTARY"
+        if "CONCL" in s:
+            return "CONCLUSION"
+        return section.strip()
+
+    token = get_token(cookies)
+    raw = fetch_fulltext_by_pmid(pmid, token)
+    df = pd.DataFrame(raw)
+    if df.empty:
+        st.error("No fulltext data available for this paper.")
+        st.stop()
+    df = df[df["TextValue"].notnull() & (df["TextValue"].str.strip() != "")]
+    df = df.rename(columns={"TextValue": "text"})
+    df = df[~df["Section"].str.upper().isin(["ISSUE", "FIG"])]
+    df["section_type"] = df["Section"].apply(normalize_section_name)
+    tab_names = df["section_type"].drop_duplicates().tolist()
+    doi_link = fetch_doi_by_pmid(pmid, token)
+    if doi_link and not str(doi_link).startswith("http"):
+        doi_link = f"https://doi.org/{doi_link}"
+    return df, tab_names, doi_link
+
+def load_state_from_backend(cookies, pmid):
+    if not st.session_state.get("backend_loaded", False):
+        user_key = get_user_key(cookies)
+        token = get_token(cookies)
+        backend_state = fetch_session_state(user_key, pmid, token)
+        if backend_state:
+            for key in ["subpages", "current_page"]:
+                if key in backend_state:
+                    st.session_state[key] = backend_state[key]
+            st.session_state["backend_loaded"] = True

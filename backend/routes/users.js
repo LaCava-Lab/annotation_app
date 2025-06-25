@@ -78,5 +78,21 @@ router.post('/add_abandoned', async (req, res) => {
   }
 });
 
+// Set abandon limit
+router.post('/set_abandon_limit', async (req, res) => {
+  const { userKey } = req.body;
+  if (!userKey) return res.status(400).json({ error: "userKey required" });
+  try {
+    const user = await User.findOne({ where: { UserKey: userKey } });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    user.AbandonLimit = true;
+    await user.save();
+    res.json(user);
+  } catch (err) {
+    console.error("Error in /set_abandon_limit:", err);
+    res.status(err.status || 500).json({ error: err.message || "Database error" });
+  }
+});
+
 
 module.exports = router;
