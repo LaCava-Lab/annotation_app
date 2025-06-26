@@ -123,7 +123,7 @@ def handle_redirects(cookies : CookieManager):
 
     # Check if token has not expired
     import requests
-    BACKEND_URL = "http://localhost:3000"
+    BACKEND_URL = "https://seal-app-c5ety.ondigitalocean.app"
     try:
         resp = requests.get(
             f"{BACKEND_URL}/users/me",
