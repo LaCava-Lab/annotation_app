@@ -45,7 +45,7 @@ router.post('/', async (req, res) => {
 
 // Save or update session state for a user and pmid
 router.post('/save', async (req, res) => {
-  const { userKey, pmid, json_state } = req.body;
+  const { userKey, pmid, json_state, q1, q1a, q1b, q1c, q2, q3 } = req.body;
   if (!userKey || !pmid || !json_state) {
     return res.status(400).json({ error: "userKey, pmid, and json_state are required" });
   }
@@ -53,18 +53,38 @@ router.post('/save', async (req, res) => {
   try {
     // Find an open session for this user and pmid
     let session = await SessionState.findOne({ where: { userID: userKey, PMID: pmid, SessionStatus: "open" } });
+    
     if (session) {
+      // Update only the json_state, preserving the question answers
       session.json_state = json_state;
       await session.save();
       res.json({ success: true, updated: true });
     } else {
-      // Create new session state
+      // Create new session state with all fields
+      console.log("Creating new session state for user:", userKey, "pmid:", pmid);
+      console.log("Session data:", {
+        userID: userKey,
+        PMID: pmid,
+        json_state: json_state,
+        q1: q1 || null,
+        q1a: q1a || null,
+        q1b: q1b || null,
+        q1c: q1c || null,
+        q2: q2 || null,
+        q3: q3 || null
+      });
       await SessionState.create({
         SessionID: `${userKey}_${pmid}_${Date.now()}`,
         userID: userKey,
         PMID: pmid,
         SessionStatus: "open",
-        json_state: json_state
+        json_state: json_state,
+        q1: q1 || null,
+        q1a: q1a || null,
+        q1b: q1b || null,
+        q1c: q1c || null,
+        q2: q2 || null,
+        q3: q3 || null
       });
       res.json({ success: true, created: true });
     }

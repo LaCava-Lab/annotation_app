@@ -2,7 +2,7 @@ import streamlit as st
 from pathlib import Path
 from process_interchange import resume
 from streamlit_cookies_manager import CookieManager
-from src.various import get_pmid, handle_redirects, get_token, get_user_key
+from src.various import get_pmid, handle_redirects, get_token, get_user_key, handle_auth_error 
 from src.database import fetch_user_info, fetch_paper_info, abandon_paper, clear_paper_in_progress, set_abandon_limit
 
 st.title(resume["title"])
@@ -43,7 +43,7 @@ if pmid:
     if success and paper_info and "Title" in paper_info:
         paper_title = f"<i>{paper_info['Title']}</i>"
     else:
-        paper_title = f"<i>{pmid}</i>"
+        handle_auth_error(cookies)
 else:
     st.switch_page("pages/2_pick_paper.py")
 

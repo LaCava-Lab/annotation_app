@@ -128,18 +128,25 @@ def add_completed_paper(user_key, pmid):
     except Exception:
         return False
     
-def save_session_state(user_key, pmid, session_state, token):
+def save_session_state(user_key, pmid, session_state, token, question_answers=None):
     """
     Save the current session state to the backend SessionState table.
+    If question_answers is provided, include those in the request.
     """
     try:
+        payload = {
+            "userKey": user_key,
+            "pmid": pmid,
+            "json_state": json.dumps(session_state)
+        }
+        
+        # Add question answers if provided
+        if question_answers:
+            payload.update(question_answers)
+            
         resp = requests.post(
             f"{BACKEND_URL}/sessions/save",
-            json={
-                "userKey": user_key,
-                "pmid": pmid,
-                "json_state": json.dumps(session_state)
-            },
+            json=payload,
             cookies={"token": token},
             timeout=10
         )
@@ -183,6 +190,8 @@ def fetch_all_papers(token):
         )
         if resp.status_code == 200:
             return True, resp.json()
+        elif resp.status_code in (401, 403):
+            return False, "Authentication error. Please log in again."
         else:
             return False, f"Failed to fetch papers: {resp.text}"
     except Exception as e:
@@ -197,8 +206,10 @@ def fetch_paper_info(pmid, token):
         )
         if resp.status_code == 200:
             return True, resp.json()
+        elif resp.status_code in (401, 403):
+            return False, "Authentication error. Please log in again."
         else:
-            return False, None
+            return False, f"Failed to fetch papers: {resp.text}"
     except Exception as e:
         return False, None
     
@@ -217,8 +228,10 @@ def fetch_doi_by_pmid(pmid, token):
             paper = resp.json()
             doi = paper.get("DOI_URL")
             return doi
+        elif resp.status_code in (401, 403):
+            return False, "Authentication error. Please log in again."
         else:
-            return None
+            return False, f"Failed to fetch papers: {resp.text}"
     except Exception:
         return None
 
@@ -241,8 +254,10 @@ def fetch_fulltext_by_pmid(pmid, token):
                 return results
             else:
                 return []
+        elif resp.status_code in (401, 403):
+            return False, "Authentication error. Please log in again."
         else:
-            return []
+            return False, f"Failed to fetch fulltext: {resp.text}"
     except Exception:
         return []
 
