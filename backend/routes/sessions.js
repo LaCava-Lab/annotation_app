@@ -61,18 +61,6 @@ router.post('/save', async (req, res) => {
       res.json({ success: true, updated: true });
     } else {
       // Create new session state with all fields
-      console.log("Creating new session state for user:", userKey, "pmid:", pmid);
-      console.log("Session data:", {
-        userID: userKey,
-        PMID: pmid,
-        json_state: json_state,
-        q1: q1 || null,
-        q1a: q1a || null,
-        q1b: q1b || null,
-        q1c: q1c || null,
-        q2: q2 || null,
-        q3: q3 || null
-      });
       await SessionState.create({
         SessionID: `${userKey}_${pmid}_${Date.now()}`,
         userID: userKey,
