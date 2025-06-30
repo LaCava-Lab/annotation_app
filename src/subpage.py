@@ -484,18 +484,17 @@ class Subpage:
                         bait = bait_obj
         st.markdown("### Bait details:")
 
-        bait_df = pd.DataFrame([
-            {
-                "Bait type": bait["type"],
-                "Bait control": bait["control"],
-                "Name": bait["name"],
-                "Alt name": "",
-                "Tag": bait["tag"],
-                "Alt tag": "",
-                "Species": bait["species"],
-                "Alt. species": "",
-            }
-        ])
+        bait_df = pd.DataFrame([{
+            "Bait type": bait.get("type", ""),
+            "Bait control": bait.get("control", ""),
+            "Name": bait.get("name", ""),
+            "Alt name": "",
+            "Tag": bait.get("tag", ""),
+            "Alt tag": "",
+            "Species": bait.get("species", ""),
+            "Alt. species": "",
+        }])
+
         st.data_editor(
             bait_df,
             num_rows="dynamic",
@@ -517,13 +516,13 @@ class Subpage:
 
         interactor_df = pd.DataFrame([
             {
-                "Bait ref": bait["name"],
-                "Interactor type": interactor["type"],
-                "Name": interactor["name"],
+                "Bait ref": bait.get("name", ""),
+                "Interactor type": interactor.get("type", ""),
+                "Name": interactor.get("name", ""),
                 "Alternative name": "",
-                "Species": interactor["species"],
+                "Species": interactor.get("species", ""),
                 "Alternative species": "",
-            } for interactor in bait["interactors"]
+            } for interactor in bait.get("interactors", [])
         ])
         st.data_editor(
             interactor_df,
