@@ -164,7 +164,7 @@ def fetch_session_state(user_key, pmid, token):
         )
         if resp.status_code == 200:
             data = resp.json()
-            print(f"DEBUG: fetch_session_state response: {data}")
+            # print(f"DEBUG: fetch_session_state response: {data}")
             if "json_state" in data:
                 # Accept both dict and string
                 if isinstance(data["json_state"], dict):

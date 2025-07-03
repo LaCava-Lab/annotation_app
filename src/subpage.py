@@ -84,7 +84,6 @@ class Subpage:
                 if current_tab is not None or current_index is not None:
                     for i,experiment in enumerate(st.session_state.subpages[self.index - 1]["experiments"][current_tab]):
                         if experiment["absolute_index"] == current_index:
-                            print(experiment["absolute_index"],self.selections)
                             st.session_state.subpages[self.index - 1]["experiments"][current_tab][i]["solutions"] = self.selections
 
 
@@ -219,13 +218,110 @@ class Subpage:
                                         },
                                         disabled=["type", "name","species"],
                                         key="exp_editor_1")
-
-
-
                 return "PI"
-
             elif self.sidebar_content["widget"] == "SOLUTION_DETAILS":
+                experiment_names = [exp["text"] for exp in self.experiments]
+                experiment_name = None
+                solution_names = []
+                solution_name = None
+                PH = ""
+                temp = ""
+                time = ""
 
+                col1, col2 = st.columns(2)
+                with col1:
+                    experiment_name = st.selectbox("Experiment", experiment_names)
+
+                for exp in self.experiments:
+                    if exp["text"] in experiment_name:
+                        solution_names = [sol["text"] for sol in exp["solutions"]]
+                        break
+
+                with col2:
+                    solution_name = st.selectbox("Solution", solution_names)
+
+                st.write("**Incubation details**")
+                col3, col4, col5 = st.columns([0.7, 1.5, 2])
+                with col3:
+                    PH = st.text_input("pH", value="0", disabled=st.session_state.select_type != "composition_listed")
+                with col4:
+                    temp = st.text_input("Temperature (°C)", value="0", key="temperature_input")
+                with col5:
+                    time = st.selectbox(
+                        "Time",
+                        [
+                            "0–5 min", "5–10 min", "10–15 min", "15–30 min", "30–60 min",
+                            "1–2 h", "2–4 h", "4–8 h", "8–16 h"
+                        ],
+                        key="time_select"
+                    )
+
+                composition = st.radio(
+                    "**Composition**",
+                    options=["Solution details not listed: reference paper",
+                             "Solution details not listed: reference manufacturer",
+                             "Solution details listed"],
+                    horizontal=True,
+                    key="column_selector_"
+                )
+                st.session_state.select_type = f"composition_{composition.strip().split()[-1]}"
+
+                if st.session_state.select_type == "composition_listed":
+                    header_selection = st.radio(
+                        "Select:",
+                        options=["Name", "Quantity", "Unit"],
+                        horizontal=True,
+                        key="column_selector"
+                    )
+
+                    st.button("Add", on_click=lambda: None, use_container_width=True)
+
+                    st.data_editor(
+                        pd.DataFrame([{
+                            "type": "",
+                            "name": "",
+                            "quantity": "",
+                            "unit": "",
+                        }]),
+                        use_container_width=True,
+                        column_config={
+                            "type": st.column_config.TextColumn("Chemical Type"),
+                            "name": st.column_config.TextColumn("Name"),
+                            "quantity": st.column_config.TextColumn("Quantity"),
+                            "unit": st.column_config.TextColumn("Unit"),
+                        },
+                        disabled=["type", "name", "quantity", "unit"],
+                        key="chems_editor_2")
+                else:
+                    data = [
+                        {"selection": item["text"]}
+                        for sublist in self.selections if sublist
+                        for item in sublist
+                    ]
+
+                    if not data:
+                        data = [{"selection": ""}]
+
+                    st.data_editor(
+                        pd.DataFrame(data),
+                        use_container_width=True,
+                            column_config={
+                            "selection": st.column_config.TextColumn("Selection"),
+                        },
+                            disabled=["selection"],
+                        key="chems_editor_3")
+
+                    for i,exp in enumerate(st.session_state.subpages[self.index-1]["experiments"]):
+                        if exp["text"] == experiment_name:
+                            for j,sol in enumerate(exp["solutions"]):
+                                if sol["text"] == solution_name:
+                                    st.session_state.subpages[self.index-1]["experiments"][i]["solutions"][j]["details"]["composition_selections"] = self.selections
+
+                for exp in self.experiments:
+                    if exp["text"] in experiment_name:
+                        for sol in exp["solutions"]:
+                            if sol["text"] == solution_name:
+                                st.session_state.active_solution_widget = sol
                 return "PI"
 
             return "PI"
@@ -348,7 +444,9 @@ class Subpage:
         tabs = st.tabs(tab_names)
         results = []
         absolute_index = st.session_state.active_experiment_widget.get("absolute_index")
+        solution_start_end_sum = st.session_state.active_solution_widget.get("start",0) + st.session_state.active_solution_widget.get("end",0)
         select_type = st.session_state.select_type
+        # st.write(solution_start_end_sum)
 
         for i, (name, tab) in enumerate(zip(tab_names, tabs)):
             tab_annotations = []
@@ -364,7 +462,7 @@ class Subpage:
                     labels=labels,
                     text_height=400,
                     annotations=tab_annotations,
-                    key=f"text_highlighter_{name}_{''.join(self.label.split(' '))}_{absolute_index}_{select_type}"  # Assign a unique key for each tab
+                    key=f"text_highlighter_{name}_{''.join(self.label.split(' '))}_{absolute_index}_{select_type}_{solution_start_end_sum}"  # Assign a unique key for each tab
                 )
                 results.append(result)
         self.selections = results
@@ -484,16 +582,23 @@ class Subpage:
                         bait = bait_obj
         st.markdown("### Bait details:")
 
-        bait_df = pd.DataFrame([{
-            "Bait type": bait.get("type", ""),
-            "Bait control": bait.get("control", ""),
-            "Name": bait.get("name", ""),
-            "Alt name": "",
-            "Tag": bait.get("tag", ""),
-            "Alt tag": "",
-            "Species": bait.get("species", ""),
-            "Alt. species": "",
-        }])
+        bait_df = None
+        if bait:
+            bait_df = pd.DataFrame([
+                {
+                    "Bait type": bait["type"],
+                    "Bait control": bait["control"],
+                    "Name": bait["name"],
+                    "Alt name": "",
+                    "Tag": bait["tag"],
+                    "Alt tag": "",
+                    "Species": bait["species"],
+                    "Alt. species": "",
+                }
+            ])
+        else:
+            bait_df = pd.DataFrame([])
+
 
         st.data_editor(
             bait_df,
@@ -514,16 +619,22 @@ class Subpage:
 
         st.markdown("### Interactor(s) details:")
 
-        interactor_df = pd.DataFrame([
-            {
-                "Bait ref": bait.get("name", ""),
-                "Interactor type": interactor.get("type", ""),
-                "Name": interactor.get("name", ""),
-                "Alternative name": "",
-                "Species": interactor.get("species", ""),
-                "Alternative species": "",
-            } for interactor in bait.get("interactors", [])
-        ])
+        interactor_df = None
+
+        if bait:
+            interactor_df = pd.DataFrame([
+                {
+                    "Bait ref": bait["name"],
+                    "Interactor type": interactor["type"],
+                    "Name": interactor["name"],
+                    "Alternative name": "",
+                    "Species": interactor["species"],
+                    "Alternative species": "",
+                } for interactor in bait["interactors"]
+            ])
+        else:
+            interactor_df = pd.DataFrame([])
+
         st.data_editor(
             interactor_df,
             num_rows="dynamic",
