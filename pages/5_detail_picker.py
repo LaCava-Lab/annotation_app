@@ -3,7 +3,7 @@ from streamlit_cookies_manager import CookieManager
 
 from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, \
     fetch_user_info, set_abandon_limit, abandon_paper, save_session_state
-from src.subpage import Subpage
+from subpage import Subpage
 from src.various import get_pmid, handle_redirects, get_token, get_user_key, fetch_and_prepare_paper_data, \
     load_state_from_backend
 from st_components.BreadCrumbs import BreadCrumbs
@@ -154,6 +154,14 @@ if "subpages" not in st.session_state:
         "species": {}
     }
 
+    st.session_state.select_type_composition = ""
+
+    st.session_state.details_listed = {
+        "name": {},
+        "quantity": {},
+        "unit": {}
+    }
+
 if "current_page" not in st.session_state:
     st.session_state.current_page = {"subpage": st.session_state.subpages[0], "index": 0}
     st.session_state.subpages[0]["visited"] = 1
@@ -177,9 +185,9 @@ for i,subpage in enumerate(st.session_state.subpages):
             list = subpage["experiments"].get(exp.get("section"))
             if list:
                 selections = list[absolute_index]["solutions"]
-    # if "experiments" in subpage and index == 4:
-    #     if st.session_state.active_solution_widget:
-    #         selections = st.session_state.active_solution_widget["details"]["composition_selections"]
+    if "experiments" in subpage and index == 4:
+        if st.session_state.active_solution_widget:
+            selections = st.session_state.active_solution_widget["details"]["composition_selections"]
 
     subpages_data.append(Subpage(index,label, doi_link, paper_data, sidebar_content, selections, highlighter_labels, coffee_break,coffee_break_display))
 
@@ -268,10 +276,10 @@ def save():
                 "solutions": [{
                     **sol,
                     "details": {
-                        "ph": "",
-                        "temp": "",
-                        "time": "",
-                        "composition_name": "",
+                        "ph": "0",
+                        "temp": "0",
+                        "time": "0–5 min",
+                        "composition_name": "Solution details not listed: reference paper",
                         "composition_selections": [],
                         "composition_chems": []
                     }
@@ -355,16 +363,19 @@ if not page.coffee_break_display:
     page.active_experiment = st.session_state.active_experiment_widget
     page.active_solution = st.session_state.active_solution_widget
     page.select_type = st.session_state.select_type
+    page.select_type_composition = st.session_state.select_type_composition
 
     st.session_state.active_experiment = page.sidebar_widget()
 
     # print(st.session_state.subpages[page.index - 1].get("experiments"))
     # print(st.session_state)
-    # st.write(st.session_state)
-
+    # st.write(st.session_state["subpages"])
 
     # reload select
     if page.select_type != st.session_state.select_type:
+        st.rerun()
+
+    if page.select_type_composition != st.session_state.select_type_composition:
         st.rerun()
 
     # reload solutions in experiments
