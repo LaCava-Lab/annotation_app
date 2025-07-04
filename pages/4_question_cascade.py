@@ -1,7 +1,7 @@
 import streamlit as st
 from process_interchange import question_cascade
 from streamlit_cookies_manager import CookieManager
-from src.various import handle_redirects, get_selected_paper, get_token, get_user_key
+from src.various import handle_redirects, get_selected_paper, get_token, get_user_key, handle_auth_error
 from src.database import fetch_paper_info, update_paper_in_progress, save_session_state
 
 # Set page config
@@ -51,6 +51,7 @@ if pmid is None:
 token = get_token(cookies)
 success, paper_meta = fetch_paper_info(pmid, token)
 if not success:
+    handle_auth_error(cookies)
     st.error("Could not fetch paper info.")
     st.stop()
 
@@ -177,6 +178,17 @@ with col2:
         st.set_option("client.showSidebarNavigation", False)
         user_key = get_user_key(cookies)
         update_paper_in_progress(user_key, pmid, token)
-        # Create initial session state in backend
-        save_session_state(user_key, pmid, {}, token)
+        
+        # Create question answers dictionary
+        question_answers = {
+            "q1": answers["q0"],
+            "q1a": answers["q1"],
+            "q1b": answers["q2"],
+            "q1c": answers["q3"],
+            "q2": answers["q4"],
+            "q3": answers["q5"]
+        }
+        
+        # Create initial session state in backend with question answers
+        save_session_state(user_key, pmid, {}, token, question_answers)
         st.switch_page("pages/5_detail_picker.py")

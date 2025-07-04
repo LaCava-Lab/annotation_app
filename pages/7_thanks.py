@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
-from src.various import handle_redirects, get_user_key, get_token
+from src.various import handle_redirects, get_user_key, get_token, handle_auth_error
 from process_interchange import thanks
 from src.database import fetch_user_info, fetch_paper_info
 
@@ -41,6 +41,7 @@ success, paper_info = fetch_paper_info(pmid, token)
 if success and paper_info and "Title" in paper_info:
     paper_name = f"<i>{paper_info['Title']}</i>"
 else:
+    handle_auth_error(cookies)
     paper_name = f"<i>{pmid}</i>"
 
 body = thanks["body"]

@@ -40,7 +40,12 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# NEEDS TO BE REMOVED IN PROD - SINCE ALL PAPERS NOT POPULATED IN BACKEND, DISCREPANCIES EXIST (PAPER EXISTING IN PAPERS BUT NOT IN FULLTEXT)
+EXCLUDED_PMIDS = {"36248803", "36498873", "39371993"}
+
 all_papers = load_paper_metadata(cookies, papers_completed, papers_abandoned)
+# Filter out excluded PMIDs from all_papers
+all_papers = [p for p in all_papers if str(p.get("pmid", "")) not in EXCLUDED_PMIDS]
 
 # Initialize session state for paper choices
 if "paper_choices" not in st.session_state:

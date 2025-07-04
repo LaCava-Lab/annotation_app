@@ -61,7 +61,7 @@ if st.button("Log in", type="primary"):
         st.set_option("client.showSidebarNavigation", True)
 
         pmid = get_pmid(cookies)
-        print(f"DEBUG: Retrieved PMID: {pmid}")
+        # print(f"DEBUG: Retrieved PMID: {pmid}")
         if pmid:
             st.switch_page("pages/1_resume.py")
         else:
