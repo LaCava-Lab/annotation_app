@@ -108,6 +108,23 @@ def get_selected_paper(cookies : CookieManager):
     # If not found, return None
     return None
 
+def handle_auth_error(cookies : CookieManager):
+    # Clear all session state
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    # Clear all relevant cookies
+    if cookies is not None:
+        for k in [
+            "logged_in", "userKey", "token",
+            "paper_in_progress", "selected_paper"
+        ]:
+            cookies[k] = ""
+        cookies.save()
+    # Hide sidebar and redirect to login
+    st.set_option("client.showSidebarNavigation", False)
+    st.switch_page("login.py")
+    st.stop()
+
 def handle_redirects(cookies : CookieManager):
     # Check cookies for session state
     if "logged_in" not in st.session_state:
@@ -165,6 +182,7 @@ def load_paper_metadata(_cookies, papers_completed, papers_abandoned):
     success, papers = fetch_all_papers(token)
     if not success:
         st.error(papers)
+        handle_auth_error(_cookies)
         st.stop()
     result = []
     for paper in papers:
@@ -234,6 +252,9 @@ def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_do
 
     token = get_token(cookies)
     raw = fetch_fulltext_by_pmid(pmid, token)
+    if not raw:
+        handle_auth_error(cookies)
+
     df = pd.DataFrame(raw)
     if df.empty:
         st.error("No fulltext data available for this paper.")

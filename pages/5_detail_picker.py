@@ -1,11 +1,11 @@
-import os
-import json
-import pandas as pd
 import streamlit as st
-from src.subpage import Subpage
-from src.various import get_pmid, handle_redirects, get_token, get_user_key, fetch_and_prepare_paper_data, load_state_from_backend
-from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_session_state
 from streamlit_cookies_manager import CookieManager
+
+from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, \
+    fetch_user_info, set_abandon_limit, abandon_paper, save_session_state
+from subpage import Subpage
+from src.various import get_pmid, handle_redirects, get_token, get_user_key, fetch_and_prepare_paper_data, \
+    load_state_from_backend
 from st_components.BreadCrumbs import BreadCrumbs
 
 # CONFIG
@@ -121,6 +121,7 @@ if "subpages" not in st.session_state:
              "widget": "SOLUTION_DETAILS"
          },
          "selections": [],
+         "experiments": {},
          "highlighter_labels":[
              ("Buffer", "#F68E5F"),
              ("pH", "#56876D"),
@@ -141,6 +142,7 @@ if "subpages" not in st.session_state:
     st.session_state.current_page = {"subpage": st.session_state.subpages[0], "index": 0}
     st.session_state.subpages[0]["visited"] = 1
     st.session_state.active_experiment_widget = {}
+    st.session_state.active_solution_widget = {}
     st.session_state.select_type = ""
     st.session_state.current_bait = {
         "name": {},
@@ -150,6 +152,14 @@ if "subpages" not in st.session_state:
     st.session_state.current_interactor = {
         "name": {},
         "species": {}
+    }
+
+    st.session_state.select_type_composition = ""
+
+    st.session_state.details_listed = {
+        "name": {},
+        "quantity": {},
+        "unit": {}
     }
 
 if "current_page" not in st.session_state:
@@ -169,13 +179,15 @@ for i,subpage in enumerate(st.session_state.subpages):
     index = subpage["index"]
 
     if "experiments" in subpage and index == 2:
-
         if st.session_state.active_experiment_widget:
             exp = st.session_state.active_experiment_widget
             absolute_index = exp.get("absolute_index")
             list = subpage["experiments"].get(exp.get("section"))
             if list:
                 selections = list[absolute_index]["solutions"]
+    if "experiments" in subpage and index == 4:
+        if st.session_state.active_solution_widget:
+            selections = st.session_state.active_solution_widget["details"]["composition_selections"]
 
     subpages_data.append(Subpage(index,label, doi_link, paper_data, sidebar_content, selections, highlighter_labels, coffee_break,coffee_break_display))
 
@@ -225,13 +237,13 @@ def prev():
     
 def save():
     index = st.session_state.current_page["index"]
+    next_page_index = index + 1
 
     #SAVE SELECTIONS
     st.session_state.subpages[index]["selections"] = page.selections
 
     #SAVE EXPERIMENTS
     if index < len(st.session_state.subpages) - 1:
-        next_page_index = index + 1
         if "experiments" in st.session_state.subpages[next_page_index] and index == 0:
             experiments = {
                 tab_name: [
@@ -255,6 +267,24 @@ def save():
                     **inner_item
                 } for inner_sublist in item["solutions"] for inner_item in inner_sublist]
             } for sublist in st.session_state.subpages[index]["experiments"].values() for item in sublist]
+            st.session_state.subpages[next_page_index]["experiments"] = experiments
+
+    if index < len(st.session_state.subpages) and index == 2:
+        if "experiments" in st.session_state.subpages[next_page_index]:
+            experiments = [{
+                **exp,
+                "solutions": [{
+                    **sol,
+                    "details": {
+                        "ph": "0",
+                        "temp": "0",
+                        "time": "0–5 min",
+                        "composition_name": "Solution details not listed: reference paper",
+                        "composition_selections": [],
+                        "composition_chems": []
+                    }
+                } for sol in exp["solutions"]]
+            } for exp in st.session_state.subpages[index]["experiments"]]
             st.session_state.subpages[next_page_index]["experiments"] = experiments
 
     # Persist the session state to the backend
@@ -285,6 +315,9 @@ labels = st.session_state.subpages[index]["highlighter_labels"]
 if not page.coffee_break_display:
     if st.session_state.active_experiment == "non-PI" and page.index == 2:
         page.update_labels_type([labels[1]])
+        page.main_page(tab_names)
+    elif st.session_state.select_type != "composition_listed" and page.index == 4:
+        page.update_labels_type(st.session_state.subpages[index-1]["highlighter_labels"])
         page.main_page(tab_names)
     else:
         page.update_labels_type(labels)
@@ -328,19 +361,29 @@ if not page.coffee_break_display:
 
 
     page.active_experiment = st.session_state.active_experiment_widget
+    page.active_solution = st.session_state.active_solution_widget
     page.select_type = st.session_state.select_type
+    page.select_type_composition = st.session_state.select_type_composition
 
     st.session_state.active_experiment = page.sidebar_widget()
 
     # print(st.session_state.subpages[page.index - 1].get("experiments"))
-    print(st.session_state)
+    # print(st.session_state)
+    # st.write(st.session_state["subpages"])
 
     # reload select
     if page.select_type != st.session_state.select_type:
         st.rerun()
 
+    if page.select_type_composition != st.session_state.select_type_composition:
+        st.rerun()
+
     # reload solutions in experiments
     if page.active_experiment != st.session_state.active_experiment_widget:
+        st.rerun()
+
+    # reload solutions in experiments
+    if page.active_solution != st.session_state.active_solution_widget:
         st.rerun()
 
     # reload state if current labels are not synced
