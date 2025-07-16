@@ -138,6 +138,8 @@ def handle_redirects(cookies : CookieManager):
     token = cookies.get("token") or st.session_state.get("token")
     if not st.session_state.logged_in or not token:
         st.set_option("client.showSidebarNavigation", False)
+        st.session_state.logged_in = False
+        cookies["logged_in"] = False
         st.switch_page("login.py")
         st.stop()
 
@@ -163,6 +165,8 @@ def handle_redirects(cookies : CookieManager):
     except Exception as e:
         st.error(f"Error checking authentication: {e}")
         st.set_option("client.showSidebarNavigation", False)
+        st.session_state.logged_in = False
+        cookies["logged_in"] = False
         st.switch_page("login.py")
         st.stop()
 
