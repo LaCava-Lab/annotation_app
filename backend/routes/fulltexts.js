@@ -14,7 +14,8 @@ router.get('/', async (req, res) => {
         EntryID: {
           [Op.like]: `${filename}_%`
         }
-      }
+      },
+      order: [['EntryID', 'ASC']]
     });
     res.json(results);
   } catch (err) {
