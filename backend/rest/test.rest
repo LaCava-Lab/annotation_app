@@ -22,7 +22,7 @@ GET http://localhost:3000/papers
 ### 
 POST http://localhost:3000/auth/logout
 ###
-GET http://localhost:3000/fulltext?filename=PMC10546312
+GET http://localhost:3000/fulltext?filename=37924094
 ###
 GET http://localhost:3000/sessions/session123
 ###
