@@ -112,6 +112,8 @@ def handle_auth_error(cookies : CookieManager):
     # Clear all session state
     for key in list(st.session_state.keys()):
         del st.session_state[key]
+    # Set logged_in to False
+    st.session_state.logged_in = False
     # Clear all relevant cookies
     if cookies is not None:
         for k in [
@@ -119,6 +121,7 @@ def handle_auth_error(cookies : CookieManager):
             "paper_in_progress", "selected_paper"
         ]:
             cookies[k] = ""
+        cookies["logged_in"] = False
         cookies.save()
     # Hide sidebar and redirect to login
     st.set_option("client.showSidebarNavigation", False)
@@ -253,6 +256,7 @@ def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_do
     token = get_token(cookies)
     raw = fetch_fulltext_by_pmid(pmid, token)
     if not raw:
+        st.error("Failed to fetch fulltext data for this paper.")
         handle_auth_error(cookies)
 
     df = pd.DataFrame(raw)
