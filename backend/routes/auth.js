@@ -6,9 +6,10 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 
-function createToken(userKey) {
-  return jwt.sign({ userKey }, JWT_SECRET, { expiresIn: '1d' });
+function createToken(user) {
+  return jwt.sign({ UserKey: user.UserKey, UserEmail: user.UserEmail }, JWT_SECRET, { expiresIn: '7d' });
 }
+
 
 async function generateUserKey() {
   const lastUser = await User.findOne({
@@ -59,7 +60,7 @@ router.post('/login', async (req, res) => {
   const match = await bcrypt.compare(UserPIN.toString(), user.UserPIN);
   if (!match) return res.status(401).json({ error: 'Invalid email or PIN' });
 
-  const token = createToken(user.UserKey);
+const token = createToken(user);
   res.cookie('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
