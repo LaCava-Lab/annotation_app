@@ -197,6 +197,8 @@ for i,subpage in enumerate(st.session_state.subpages):
 page = subpages_data[st.session_state.current_page["index"]]
 
 # func to change page
+def reload():
+    st.rerun()
 def changePage(index):
     st.session_state.current_page = {
         "subpage": st.session_state.subpages[index],
@@ -226,7 +228,6 @@ def prev():
     if st.session_state.subpages[index]["coffee_break"] and st.session_state.subpages[index]["coffee_break_display"]:
         st.session_state.subpages[index]["coffee_break_display"] = False
         st.rerun()
-        return
 
     # Otherwise, go to the previous page
     for page in st.session_state.subpages:
@@ -238,6 +239,10 @@ def prev():
 def save():
     index = st.session_state.current_page["index"]
     next_page_index = index + 1
+
+    #SAVE COFFEE BREAKS
+    if st.session_state.subpages[index]["coffee_break"] and st.session_state.subpages[index]["coffee_break_display"]:
+        page.saveCoffeeBreak()
 
     #SAVE SELECTIONS
     st.session_state.subpages[index]["selections"] = page.selections
@@ -251,6 +256,7 @@ def save():
                      "solutions": item.get("solutions", []),
                      "section": tab_name,
                      "type": page.check_tag(item["tag"]),
+                     "alt_exp_text": None,
                      "absolute_index" :sum(len(page.selections[k]) for k in range(i)) + j,
                      "background_color": "#6290C3" if page.check_tag(item["tag"]) == "PI" else "#F25757",
                      "text_color": "white"}
@@ -264,7 +270,7 @@ def save():
                 **item,
                 "baits": item.get("baits", []),
                 "solutions": [{
-                    **inner_item
+                    **inner_item,
                 } for inner_sublist in item["solutions"] for inner_item in inner_sublist]
             } for sublist in st.session_state.subpages[index]["experiments"].values() for item in sublist]
             st.session_state.subpages[next_page_index]["experiments"] = experiments
@@ -326,7 +332,7 @@ else:
     page.main_page()
     page.display_coffee_break_nav_buttons(
         index, pmid, cookies,
-        prev, save, next,
+        prev, save, next,reload,
         get_user_key, get_token, add_completed_paper, clear_paper_in_progress
     )
 
