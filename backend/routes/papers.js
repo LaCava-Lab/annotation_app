@@ -3,7 +3,7 @@ const router = express.Router();
 const { Paper } = require('../models');
 
 const DEMO_EMAIL = 'demo@demo.com';
-const DEMO_PMIDS = ['37795087', '29309035', '22589133', '20021644', '20054825'];
+const DEMO_PMIDS = ['35100360', '38096902', '29309035', '37924094', '36542723'];
 
 router.get('/', async (req, res) => {
   try {
