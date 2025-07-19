@@ -12,9 +12,10 @@ const importCSV = async (filePath) => {
         fs.createReadStream(filePath)
             .pipe(csvParser())
             .on('data', (row) => {
+                const rawPMID = row.EntryID?.split('_')[0];
                 records.push({
                     EntryID: row.EntryID,
-                    PMID: row.filename,
+                    PMID: rawPMID,
                     Section: row.section_type,
                     Type: row.subtitle,
                     TextValue: row.text
