@@ -287,3 +287,46 @@ def load_state_from_backend(cookies, pmid):
                 if key in backend_state:
                     st.session_state[key] = backend_state[key]
             st.session_state["backend_loaded"] = True
+
+def get_user_progress(cookies, pmid):
+
+    """
+    Fetches user progress data from the backend for the given PMID.
+    Returns a tuple of (num_protocols, num_solutions, num_annotated) to display in resume page.
+    """
+
+    user_key = get_user_key(cookies)
+    token = get_token(cookies)
+    backend_state = fetch_session_state(user_key, pmid, token)
+    if not backend_state:
+        return 0, 0, 0
+
+    subpages = backend_state.get("subpages", [])
+    experiments = []
+
+    for subpage in reversed(subpages):
+        exp_struct = subpage.get("experiments", [])
+        if isinstance(exp_struct, list) and exp_struct:
+            experiments = exp_struct
+            break
+        elif isinstance(exp_struct, dict):
+            for tab in exp_struct.values():
+                if tab:
+                    experiments.extend(tab)
+            if experiments:
+                break
+
+    num_protocols = len(experiments)
+    num_solutions = 0
+    num_annotated = 0
+
+    for exp in experiments:
+        solutions = exp.get("solutions", [])
+        for sol in solutions:
+            if not isinstance(sol, dict):
+                continue
+            num_solutions += 1
+            if sol.get("details"):
+                num_annotated += 1
+
+    return num_protocols, num_solutions, num_annotated
