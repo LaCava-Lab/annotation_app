@@ -295,6 +295,21 @@ def get_user_progress(cookies, pmid):
     Returns a tuple of (num_protocols, num_solutions, num_annotated) to display in resume page.
     """
 
+    def is_details_annotated(details):
+        # Check for default values
+        if not details:
+            return False
+        if (
+            details.get("ph") == "0"
+            and details.get("temp") == "0"
+            and details.get("time") == "0–5 min"
+            and details.get("composition_name") == "Solution details not listed: reference paper"
+            and details.get("composition_selections") == []
+            and details.get("composition_chems") == []
+        ):
+            return False
+        return True
+    
     user_key = get_user_key(cookies)
     token = get_token(cookies)
     backend_state = fetch_session_state(user_key, pmid, token)
@@ -326,7 +341,8 @@ def get_user_progress(cookies, pmid):
             if not isinstance(sol, dict):
                 continue
             num_solutions += 1
-            if sol.get("details"):
+            details = sol.get("details")
+            if is_details_annotated(details):
                 num_annotated += 1
 
     return num_protocols, num_solutions, num_annotated
