@@ -2,7 +2,7 @@ import streamlit as st
 from pathlib import Path
 from process_interchange import resume
 from streamlit_cookies_manager import CookieManager
-from src.various import get_pmid, handle_redirects, get_token, get_user_key, handle_auth_error 
+from src.various import get_pmid, handle_redirects, get_token, get_user_key, handle_auth_error, get_user_progress
 from src.database import fetch_user_info, fetch_paper_info, abandon_paper, clear_paper_in_progress, set_abandon_limit
 
 st.title(resume["title"])
@@ -47,10 +47,8 @@ if pmid:
 else:
     st.switch_page("pages/2_pick_paper.py")
 
-# Dummy values for protocols/solutions/annotated (REPLACE WITH ACTUAL DATA)
-protocols = "N"
-solutions = "M"
-annotated = "Q"
+# Number of protocols and solutions annotated
+protocols, solutions, annotated = get_user_progress(cookies, pmid)
 
 processed_text = resume["paper_in_progress"]["detail"].format(
     paper_title=paper_title,
