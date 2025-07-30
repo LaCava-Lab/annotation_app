@@ -82,5 +82,25 @@ router.post('/save', async (req, res) => {
   }
 });
 
+// Update SessionStatus for a session by SessionID
+router.patch('/status/:id', async (req, res) => {
+  const { status } = req.body;
+  const allowedStatuses = ["open", "closed", "abandoned", "negative"];
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: "Invalid status value" });
+  }
+  try {
+    const session = await SessionState.findByPk(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+    session.SessionStatus = status;
+    await session.save();
+    res.json({ success: true, SessionID: session.SessionID, newStatus: status });
+  } catch (err) {
+    console.error("Error updating session status:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
 
 module.exports = router;
