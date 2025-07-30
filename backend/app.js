@@ -3,6 +3,7 @@ const express = require('express');
 const app = express();
 require('dotenv').config();
 const path = require('path');
+const morgan = require('morgan');
 const authenticateToken = require('./middleware/auth');
 const userRoutes = require('./routes/users');
 const paperRoutes = require('./routes/papers');
@@ -18,6 +19,7 @@ const cookieParser = require('cookie-parser');
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(morgan('dev'));
 app.use('/users', userRoutes);
 app.use('/papers', authenticateToken, paperRoutes);
 app.use('/auth', authRoutes);

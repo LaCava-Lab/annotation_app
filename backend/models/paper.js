@@ -1,6 +1,7 @@
 module.exports = (sequelize, DataTypes) => {
   return sequelize.define('Paper', {
   PMID: { type: DataTypes.STRING, primaryKey: true },
+  PMCID: DataTypes.STRING,
   DOI_URL: DataTypes.TEXT,
   Title: DataTypes.TEXT,
   Authors: DataTypes.ARRAY(DataTypes.STRING),
