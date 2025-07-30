@@ -77,6 +77,7 @@ def abandon_paper(user_key, pmid, token):
             cookies={"token": token},
             timeout=10
         )
+        update_session_status(f"{user_key}_{pmid}", "abandoned", token)
         return resp.status_code == 200
     except Exception:
         return False
@@ -179,6 +180,22 @@ def fetch_session_state(user_key, pmid, token):
     except Exception:
         return None
 
+def update_session_status(session_id, status, token):
+    """
+    Update the SessionStatus field for a session.
+    Allowed status values: "open", "closed", "abandoned", "negative"
+    """
+    try:
+        resp = requests.patch(
+            f"{BACKEND_URL}/sessions/status/{session_id}",
+            json={"status": status},
+            cookies={"token": token},
+            timeout=10
+        )
+        return resp.status_code == 200
+    except Exception:
+        return False
+    
 # -- "Papers" Functions --
 
 def fetch_all_papers(token):
@@ -379,5 +396,8 @@ def save_annotations_to_db(session_state, user_key, pmid, token):
             json=interactors,
             cookies={"token": token}
         )
+        
+    # Set session status to "closed"
+    update_session_status(session_id, "closed", token)
 
     return True
