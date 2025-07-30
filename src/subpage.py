@@ -184,8 +184,9 @@ class Subpage:
                     return "PI"
             elif self.sidebar_content["widget"] == "EXPERIMENT_DETAILS":
                 experiment_names = [
-                    exp["alt_exp_text"] if exp["alt_exp_text"] is not None else exp["text"]
+                    exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
                     for exp in self.experiments
+                    if exp["type"] == "PI" # Filtering only PI experiments
                 ]
                 experiment_name = st.selectbox("Experiment", experiment_names)
                 add_option = st.radio("Add :", ["Bait", "Interactor(s)"], horizontal=True, label_visibility="collapsed")
@@ -329,6 +330,7 @@ class Subpage:
                 experiment_names = [
                     exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
                     for exp in self.experiments
+                    if exp["type"] == "PI" # Filtering only PI experiments
                 ]
                 experiment_name = None
                 solution_names = []
@@ -348,6 +350,7 @@ class Subpage:
                         solution_names = [
                             sol["alt_sol_text"] if sol["alt_sol_text"] else sol["text"]
                             for sol in exp["solutions"]
+                            if sol["type"] == "PI"
                         ]
                         break
 
@@ -824,6 +827,7 @@ class Subpage:
         experiment_names = [
             exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
             for exp in self.experiments
+            if exp["type"] == "PI"
         ]
         experiment_name = None
         bait_name = None
@@ -931,10 +935,22 @@ class Subpage:
         }
 
     def display_coffee_break_3(self):
+        # Filter experiments to only those with at least one PI solution
+        filtered_experiments = []
+        for exp in self.experiments:
+            solutions = exp.get("solutions", [])
+            if solutions and isinstance(solutions[0], list):
+                flat_solutions = [item for sublist in solutions for item in sublist]
+            else:
+                flat_solutions = solutions
+            if any(sol.get("type") == "PI" for sol in flat_solutions if isinstance(sol, dict)):
+                filtered_experiments.append(exp)
+
         experiment_names = [
-            exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
-            for exp in self.experiments
+            exp["alt_exp_text"] if exp.get("alt_exp_text") else exp["text"]
+            for exp in filtered_experiments
         ]
+
         experiment_name = None
         solution_names = []
         solution_name = None
@@ -968,6 +984,7 @@ class Subpage:
                 solution_names = [
                     sol["alt_sol_text"] if sol["alt_sol_text"] else sol["text"]
                     for sol in exp["solutions"]
+                    if sol["type"] == "PI"
                 ]
                 break
 
