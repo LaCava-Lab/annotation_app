@@ -14,7 +14,7 @@ POST http://localhost:3000/auth/login
 Content-Type: application/json
 
 {
-  "UserEmail": "demo@demo.com",
+  "UserEmail": "john@example.com",
   "UserPIN": 1234
 }
 ###
@@ -22,7 +22,7 @@ GET http://localhost:3000/papers
 ### 
 POST http://localhost:3000/auth/logout
 ###
-GET http://localhost:3000/fulltext?filename=37924094
+GET http://localhost:3000/fulltext?filename=38096902
 ###
 GET http://localhost:3000/sessions/session123
 ###

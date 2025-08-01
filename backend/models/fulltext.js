@@ -2,6 +2,7 @@ module.exports = (sequelize, DataTypes) => {
   return sequelize.define('FullText', {
     EntryID: { type: DataTypes.STRING, primaryKey: true },
     PMID: DataTypes.STRING,
+    PMCID: DataTypes.STRING,
     Section: DataTypes.STRING,
     Type: DataTypes.TEXT,
     TextValue: DataTypes.TEXT
