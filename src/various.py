@@ -221,7 +221,8 @@ def load_paper_metadata(_cookies, papers_completed, papers_abandoned):
             "doi": paper.get("DOI_URL", ""),
             "link": paper.get("DOI_URL", ""),
             "filename": pmid,
-            "pmid": pmid
+            "pmid": pmid,
+            "abstract": paper.get('Abstract', "")
         })
     return result
 
