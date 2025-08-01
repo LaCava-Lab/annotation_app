@@ -670,7 +670,8 @@ class Subpage:
 
     def displayTextHighlighter(self, labels, tab_names):
         label_names = [l[0] for l in labels]
-        tabs = st.tabs(tab_names)
+        tabs_comp = st.tabs(["FRONT PAGE",*tab_names])
+        first_page, *tabs = tabs_comp
         results = []
         absolute_index = st.session_state.active_experiment_widget.get("absolute_index")
         solution_start_end_sum = st.session_state.active_solution_widget.get("start",
@@ -679,6 +680,26 @@ class Subpage:
         select_type = st.session_state.select_type
         select_type_composition = st.session_state.select_type_composition
         # st.write(solution_start_end_sum)
+
+        with first_page:
+            # Display paper metadata
+            if "paper_metadata_picker" in st.session_state:
+                meta = st.session_state.paper_metadata_picker
+
+                title = meta["title"]
+                authors_str = meta["authors_str"]
+                metadata_line = meta["metadata_line"]
+                abstract = meta["abstract"]
+                st.markdown(f"""
+                    <h3>You have selected to annotate the paper:</h3>
+                    <strong>{authors_str}</strong>, <em>{title}</em>
+                """, unsafe_allow_html=True)
+                if metadata_line:
+                    st.markdown(metadata_line)
+                st.markdown(f"""
+                    <h4>Abstract</h4>
+                    <span>{abstract}</span>
+                """, unsafe_allow_html=True)
 
         for i, (name, tab) in enumerate(zip(tab_names, tabs)):
             tab_annotations = []
