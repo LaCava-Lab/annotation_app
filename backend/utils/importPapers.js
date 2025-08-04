@@ -8,11 +8,12 @@ async function importPapersCSV(filePath) {
   const records = [];
 
   return new Promise((resolve, reject) => {
-    fs.createReadStream(path.resolve(filePath))
+    fs.createReadStream(path.resolve(filePath),  { encoding: 'utf8' })
       .pipe(csv())
       .on('data', (row) => {
         records.push({
           PMID: row.PMID,
+          PMCID: row.PMCID,
           DOI_URL: row.DOI,
           Title: row.Title,
           Authors: row.Authors ? row.Authors.split(',').map(a => a.trim()) : [],
