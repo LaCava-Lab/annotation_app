@@ -36,12 +36,18 @@ def format_paper_metadata(paper_meta):
         metadata_line += f"**Year:** {year}, "
     if metadata_line.endswith(", "):
         metadata_line = metadata_line[:-2]
-    doi_link = paper_meta.get("DOI_URL", "")
-    if doi_link and not doi_link.startswith("http"):
-        doi_link = f"https://doi.org/{doi_link}"
-    if not doi_link:
-        doi_link = None
-    return title, authors_str, metadata_line, doi_link
+    pmcid = paper_meta.get("PMCID", "") or paper_meta.get("pmcid", "")
+    pmc_link = ""
+    if pmcid and str(pmcid).strip().upper().startswith("PMC"):
+        pmc_link = f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/"
+    if pmc_link:
+        fulltext_link = pmc_link
+    else:
+        doi_link = paper_meta.get("DOI_URL", "")
+        if doi_link and not doi_link.startswith("http"):
+            doi_link = f"https://doi.org/{doi_link}"
+        fulltext_link = doi_link if doi_link else None
+    return title, authors_str, metadata_line, fulltext_link
 
 pmid = get_selected_paper(cookies)
 if pmid is None:
@@ -55,7 +61,7 @@ if not success:
     st.error("Could not fetch paper info.")
     st.stop()
 
-title, authors_str, metadata_line, doi_link = format_paper_metadata(paper_meta)
+title, authors_str, metadata_line, fulltext_link = format_paper_metadata(paper_meta)
 
 # Display paper metadata
 st.markdown(f"""
@@ -81,8 +87,8 @@ with col2:
 st.markdown("###")
 col1, col2, col3 = st.columns([1.5, 1, 1])
 with col2:
-    if doi_link:
-        st.link_button(question_cascade["go_to_fulltext"], doi_link)
+    if fulltext_link:
+        st.link_button(question_cascade["go_to_fulltext"], fulltext_link)
     else:
         st.warning(question_cascade["doi_warning"])
 
