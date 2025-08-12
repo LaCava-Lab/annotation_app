@@ -43,7 +43,16 @@ if pmid:
     if success and paper_info and "Title" in paper_info:
         paper_title = f"<i>{paper_info['Title']}</i>"
     else:
-        handle_auth_error(cookies)
+        # If paper not found, just clear paper in progress and redirect
+        if isinstance(paper_info, str) and "Paper not found" in paper_info:
+            clear_paper_in_progress(user_key, token)
+            cookies["paper_in_progress"] = ""
+            cookies.save()
+            if "paper_in_progress" in st.session_state:
+                del st.session_state["paper_in_progress"]
+            st.switch_page("pages/2_pick_paper.py")
+        else:
+            handle_auth_error(cookies)
 else:
     st.switch_page("pages/2_pick_paper.py")
 

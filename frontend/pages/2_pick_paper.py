@@ -88,12 +88,20 @@ for i, paper in enumerate(st.session_state.paper_choices):
         label = label[:-2]
     label += "\n\n"
 
-    # DOI Link extraction
-    doi_link = paper.get("link", "")
-    if doi_link and not doi_link.startswith("http"):
-        doi_link = f"https://doi.org/{doi_link}"
-    if doi_link:
-        label += f"[**Link**]({doi_link})"
+    # PMC Link extraction (preferred over DOI)
+    pmcid = paper.get("pmcid", "")
+    pmc_link = ""
+    if pmcid and str(pmcid).strip().upper().startswith("PMC"):
+        pmc_link = f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/"
+    if pmc_link:
+        label += f"[**Link**]({pmc_link})"
+    else:
+        # Fallback to DOI if no PMCID
+        doi_link = paper.get("link", "")
+        if doi_link and not doi_link.startswith("http"):
+            doi_link = f"https://doi.org/{doi_link}"
+        if doi_link:
+            label += f"[**Link**]({doi_link})"
 
     st.checkbox(label, key=key, value=st.session_state.get(key, False),
                 on_change=select, args=(paper["filename"], key))
