@@ -65,6 +65,15 @@ Content-Type: application/json
 }
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>{
+  "message": "User created",
+  "userKey": "U0031",
+  "UserEmail": "api@example.com"
+}</code></pre>
+      </details>
+
       <li><code>POST /auth/login</code> - Log in and receive a token</li>
       <details>
         <summary>Example</summary>
@@ -77,12 +86,28 @@ Content-Type: application/json
 }
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>{
+  "message": "Logged in",
+  "userKey": "U0000",
+  "token": "... (JWT token here)"
+}</code></pre>
+      </details>
+
       <li><code>POST /auth/logout</code> - Log out</li>
       <details>
         <summary>Example</summary>
         <pre><code>POST /auth/logout
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>{
+  "message": "Logged out"
+}</code></pre>
+      </details>
+
     </ul>
   </section>
 
@@ -95,6 +120,29 @@ Content-Type: application/json
         <pre><code>GET /users/me?userKey=U0000
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>{
+  "UserKey": "U0000",
+  "UserPIN": "$2b$10$ZBZDLGKdNzG1kQfc6wPD0uC5KhQLDJj43ZukqerewstjpVvh5aPhS",
+  "UserEmail": "john@example.com",
+  "AbandonLimit": true,
+  "CurrentPMID": "20021644",
+  "AbandonedPMIDs": [
+    "37795087",
+    "37924094"
+  ],
+  "CompletedPMIDs": [
+    "18617507",
+    "10190907"
+  ],
+  "OpenSessionID": null,
+  "AbandonedSessionID": [],
+  "ClosedSessionID": [],
+  "password": null
+}</code></pre>
+      </details>
+
       <li><code>POST /users/set_current_pmid</code> - Set current paper in progress</li>
       <details>
         <summary>Example</summary>
@@ -107,6 +155,7 @@ Content-Type: application/json
 }
 </code></pre>
       </details>
+
       <li><code>POST /users/add_completed</code> - Add completed paper for user</li>
       <details>
         <summary>Example</summary>
@@ -119,6 +168,8 @@ Content-Type: application/json
 }
 </code></pre>
       </details>
+
+
       <li><code>POST /users/add_abandoned</code> - Add abandoned paper for user</li>
       <details>
         <summary>Example</summary>
@@ -131,6 +182,8 @@ Content-Type: application/json
 }
 </code></pre>
       </details>
+
+
       <li><code>POST /users/set_abandon_limit</code> - Set abandon limit for user</li>
       <details>
         <summary>Example</summary>
@@ -141,25 +194,79 @@ Content-Type: application/json
   "userKey": "U0000"
 }
 </code></pre>
-      </details>
+
+
     </ul>
   </section>
 
   <section>
     <h2>📄 Paper Routes</h2>
     <ul>
+
       <li><code>GET /papers</code> - All papers (requires auth)</li>
       <details>
         <summary>Example</summary>
         <pre><code>GET /papers
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>[
+  {
+    "PMID": "10190907",
+    "PMCID": "PMC2193004",
+    "DOI_URL": "10.1084/jem.189.7.1157",
+    "Title": "Cytotoxic T lymphocyte-associated antigen 4 (CTLA-4) can regulate dendritic cell-induced activation and cytotoxicity of CD8(+) T cells independently of CD4(+) T cell help.",
+    "Authors": [
+      "McCoy KD",
+      "Hermans IF",
+      "Fraser JH",
+      "Le Gros G",
+      "Ronchese F"
+    ],
+    "Year": 1999,
+    "Journal": "J Exp Med",
+    "Volume": "189",
+    "Issue": "7",
+    "Pages": "1157-62",
+    "Abstract": "The mechanisms that regulate the strength and duration of CD8(+) cytotoxic T cell activity determine the effectiveness of an antitumor immune response. To better understand the antitumor effects of anti-cytotoxic T lymphocyte-associated antigen 4 (CTLA-4) antibody treatment, we analyzed the effect of CTLA-4 signaling on CD8(+) T cells in vitro and in vivo. In vitro, cross-linking of CTLA-4 on purified CD8(+) T cells caused decreased proliferative responses to anti-CD3 stimulation and rapid loss of activation marker expression. In vivo, blockade of CTLA-4 by neutralizing anti-CTLA-4 mAb greatly enhanced the accumulation, activation, and cytotoxic activity of CD8(+) T cells induced by immunization with Ag on dendritic cells (DC). This enhanced response did not require the expression of MHC class II molecules on DC or the presence of CD4(+) T cells. These results demonstrate that CTLA-4 blockade is able to directly enhance the proliferation and activation of specific CD8(+) T cells, indicating its potential for tumor immunotherapy even in situations in which CD4(+) T cell help is limited or absent.",
+    "UsersCompleted": [],
+    "UsersCurrent": []
+  },
+...</code></pre>
+      </details>
+
       <li><code>GET /papers/:pmid</code> - Get paper by PMID</li>
       <details>
         <summary>Example</summary>
         <pre><code>GET /papers/38096902
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>{
+  "PMID": "10190907",
+  "PMCID": "PMC2193004",
+  "DOI_URL": "10.1084/jem.189.7.1157",
+  "Title": "Cytotoxic T lymphocyte-associated antigen 4 (CTLA-4) can regulate dendritic cell-induced activation and cytotoxicity of CD8(+) T cells independently of CD4(+) T cell help.",
+  "Authors": [
+    "McCoy KD",
+    "Hermans IF",
+    "Fraser JH",
+    "Le Gros G",
+    "Ronchese F"
+  ],
+  "Year": 1999,
+  "Journal": "J Exp Med",
+  "Volume": "189",
+  "Issue": "7",
+  "Pages": "1157-62",
+  "Abstract": "The mechanisms that regulate the strength and duration of CD8(+) cytotoxic T cell activity determine the effectiveness of an antitumor immune response. To better understand the antitumor effects of anti-cytotoxic T lymphocyte-associated antigen 4 (CTLA-4) antibody treatment, we analyzed the effect of CTLA-4 signaling on CD8(+) T cells in vitro and in vivo. In vitro, cross-linking of CTLA-4 on purified CD8(+) T cells caused decreased proliferative responses to anti-CD3 stimulation and rapid loss of activation marker expression. In vivo, blockade of CTLA-4 by neutralizing anti-CTLA-4 mAb greatly enhanced the accumulation, activation, and cytotoxic activity of CD8(+) T cells induced by immunization with Ag on dendritic cells (DC). This enhanced response did not require the expression of MHC class II molecules on DC or the presence of CD4(+) T cells. These results demonstrate that CTLA-4 blockade is able to directly enhance the proliferation and activation of specific CD8(+) T cells, indicating its potential for tumor immunotherapy even in situations in which CD4(+) T cell help is limited or absent.",
+  "UsersCompleted": [],
+  "UsersCurrent": []
+}</code></pre>
+      </details>
+
     </ul>
   </section>
 
@@ -172,6 +279,20 @@ Content-Type: application/json
         <pre><code>GET /fulltext?filename=38096902
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>[
+  {
+    "EntryID": "38096902_006",
+    "PMID": "38096902",
+    "PMCID": "PMC10830420",
+    "Section": "INTRODUCTION",
+    "Type": "title_1",
+    "TextValue": "Main"
+  },
+...</code></pre>
+      </details>
+
     </ul>
   </section>
 
@@ -184,12 +305,45 @@ Content-Type: application/json
         <pre><code>GET /sessions/by_user_pmid?userKey=U0000&pmid=123456
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>"json_state": {
+    "subpages": [
+      {
+        "label": "Experiment Picker",
+        "sidebar_content": {
+          "subtitle": "Step 1/4 : Identify experiments (names)",
+          "description": "Identify all the experimental methods used in the paper and determine if they contain any steps that **preserve protein interactions (PIs) with any other type of molecule, in cell-free systems, without use of cross-linking**. We are not interested in identifying methods that are exclusively computational.",
+          "widget": "CARDS"
+        },
+      ...</code></pre>
+      </details>
+
       <li><code>GET /sessions/:id</code> - Get session state by SessionID</li>
       <details>
         <summary>Example</summary>
         <pre><code>GET /sessions/session123
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>{
+  "SessionID": "U0000_10190907_1753823399604",
+  "userID": "U0000",
+  "PMID": "10190907",
+  "SessionStatus": "open",
+  "json_state": {
+    "subpages": [
+      {
+        "label": "Experiment Picker",
+        "sidebar_content": {
+          "subtitle": "Step 1/4 : Identify experiments (names)",
+          "description": "Identify all the experimental methods used in the paper and determine if they contain any steps that **preserve protein interactions (PIs) with any other type of molecule, in cell-free systems, without use of cross-linking**. We are not interested in identifying methods that are exclusively computational.",
+          "widget": "CARDS"
+        },
+      ...</code></pre>
+      </details>
+
       <li><code>POST /sessions</code> - Create a session state</li>
       <details>
         <summary>Example</summary>
@@ -205,6 +359,7 @@ Content-Type: application/json
 }
 </code></pre>
       </details>
+
       <li><code>POST /sessions/save</code> - Save or update session state for a user and pmid</li>
       <details>
         <summary>Example</summary>
@@ -218,18 +373,37 @@ Content-Type: application/json
 }
 </code></pre>
       </details>
+
+
     </ul>
   </section>
 
   <section>
     <h2>🧪 Experiment Routes</h2>
     <ul>
+
       <li><code>GET /experiments</code> - Get all experiments</li>
       <details>
         <summary>Example</summary>
         <pre><code>GET /experiments
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>[
+  {
+    "ExperimentID": "exp001",
+    "SessionID": "session123",
+    "name": "Experiment A",
+    "name_section": "Methods",
+    "name_start": 10,
+    "name_end": 50,
+    "name_alt": "Alt Experiment A",
+    "type": "PI"
+  },
+...</code></pre>
+      </details>
+
       <li><code>POST /experiments</code> - Add experiments in bulk</li>
       <details>
         <summary>Example</summary>
@@ -250,6 +424,7 @@ Content-Type: application/json
 ]
 </code></pre>
       </details>
+
     </ul>
   </section>
 
@@ -261,6 +436,24 @@ Content-Type: application/json
         <summary>Example</summary>
         <pre><code>GET /solutions
 </code></pre>
+      </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>[
+  {
+    "SolutionID": "sol001",
+    "ExperimentID": "exp001",
+    "name": "Solution X",
+    "name_section": "Methods",
+    "name_start": 5,
+    "name_end": 30,
+    "name_alt": "Alt Solution X",
+    "type": "PI",
+    "temp": "37C",
+    "time": "2h",
+    "ph": 7
+  },
+...</code></pre>
       </details>
       <li><code>POST /solutions</code> - Add solutions in bulk</li>
       <details>
@@ -285,6 +478,7 @@ Content-Type: application/json
 ]
 </code></pre>
       </details>
+
     </ul>
   </section>
 
@@ -297,6 +491,28 @@ Content-Type: application/json
         <pre><code>GET /baits
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>[
+  {
+    "BaitID": "bait001",
+    "ExperimentID": "exp001",
+    "name": "Bait X",
+    "name_section": "Intro",
+    "name_start": 3,
+    "name_end": 20,
+    "name_alt": "Alt Bait",
+    "species_name": "Homo sapiens",
+    "species_name_section": "Intro",
+    "species_name_start": 21,
+    "species_name_end": 35,
+    "species_name_alt": "Alt Species",
+    "isControl": "No",
+    "bait_type": "protein"
+  },
+...</code></pre>
+      </details>
+
       <li><code>POST /baits</code> - Add baits in bulk</li>
       <details>
         <summary>Example</summary>
@@ -323,6 +539,7 @@ Content-Type: application/json
 ]
 </code></pre>
       </details>
+
     </ul>
   </section>
 
@@ -335,6 +552,28 @@ Content-Type: application/json
         <pre><code>GET /interactors
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>[
+  {
+    "InteractorID": "inter001",
+    "BaitID": "bait001",
+    "ExperimentID": "exp001",
+    "name": "Interactor X",
+    "name_section": "Results",
+    "name_start": 11,
+    "name_end": 40,
+    "name_alt": "Alt Interactor",
+    "species_name": "Mus musculus",
+    "species_name_section": "Results",
+    "species_name_start": 41,
+    "species_name_end": 60,
+    "species_name_alt": "Alt Species",
+    "type": "RNA"
+  },
+...</code></pre>
+      </details>
+
       <li><code>POST /interactors</code> - Add interactors in bulk</li>
       <details>
         <summary>Example</summary>
@@ -361,6 +600,7 @@ Content-Type: application/json
 ]
 </code></pre>
       </details>
+
     </ul>
   </section>
 
@@ -373,6 +613,33 @@ Content-Type: application/json
         <pre><code>GET /chemistrys
 </code></pre>
       </details>
+      <details>
+        <summary>Response</summary>
+        <pre><code>
+[
+  {
+    "ChemistryID": "chem001",
+    "SolutionID": "sol001",
+    "name": "Chem A",
+    "name_section": "Methods",
+    "name_start": 1,
+    "name_end": 15,
+    "name_alt": "Alt Chem",
+    "concentration_name": "10mM",
+    "concentration_name_section": "Methods",
+    "concentration_name_start": 16,
+    "concentration_name_end": 20,
+    "concentration_name_alt": "Alt Conc",
+    "unit_name": "mM",
+    "unit_name_section": "Methods",
+    "unit_name_start": 21,
+    "unit_name_end": 23,
+    "unit_name_alt": "Alt Unit",
+    "type": "DNA"
+  },
+...</code></pre>
+      </details>
+
       <li><code>POST /chemistrys</code> - Add chemistry records in bulk</li>
       <details>
         <summary>Example</summary>
@@ -403,6 +670,7 @@ Content-Type: application/json
 ]
 </code></pre>
       </details>
+
     </ul>
   </section>
 

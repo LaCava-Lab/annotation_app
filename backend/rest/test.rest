@@ -1,7 +1,3 @@
-GET http://localhost:3000/users
-###
-GET http://localhost:3000/papers
-### 
 POST http://localhost:3000/auth/signup
 Content-Type: application/json
 
@@ -18,13 +14,19 @@ Content-Type: application/json
   "UserPIN": 1234
 }
 ###
-GET http://localhost:3000/papers
-### 
 POST http://localhost:3000/auth/logout
+###
+GET http://localhost:3000/users/me?userKey=U0000
+###
+GET http://localhost:3000/papers
+###
+GET http://localhost:3000/papers/10190907
 ###
 GET http://localhost:3000/fulltext?filename=38096902
 ###
-GET http://localhost:3000/sessions/session123
+GET http://localhost:3000/sessions/by_user_pmid?userKey=U0000&pmid=10190907
+###
+GET http://localhost:3000/sessions/U0000_10190907_1753823399604
 ###
 POST http://localhost:3000/sessions
 Content-Type: application/json

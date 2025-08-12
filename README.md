@@ -14,4 +14,3 @@
 4. Testing the app
     - To run the automated tests for the backend run `npm test` in the `/backend` folder
     - You can also use the `test.rest` file inside of the `/backend/rest` folder to send requests to the backend while its running locally. You must install the vscode REST client before doing so: https://marketplace.visualstudio.com/items?itemName=humao.rest-client
-## Deployment
