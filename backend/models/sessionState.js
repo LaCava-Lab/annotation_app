@@ -4,7 +4,7 @@ module.exports = (sequelize, DataTypes) => {
     userID: DataTypes.STRING,
     PMID: DataTypes.STRING,
     SessionStatus: DataTypes.STRING,
-    json_state: DataTypes.STRING, // should be a json binary
+    json_state: DataTypes.TEXT,
     q1: DataTypes.STRING,
     q1a: DataTypes.STRING,
     q1b: DataTypes.STRING,
