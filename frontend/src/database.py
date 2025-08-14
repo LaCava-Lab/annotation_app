@@ -77,7 +77,7 @@ def abandon_paper(user_key, pmid, token):
             cookies={"token": token},
             timeout=10
         )
-        update_session_status(f"{user_key}_{pmid}", "abandoned", token)
+        update_session_status(user_key, pmid, "abandoned", token)
         return resp.status_code == 200
     except Exception:
         return False
@@ -398,6 +398,6 @@ def save_annotations_to_db(session_state, user_key, pmid, token):
         )
         
     # Set session status to "closed"
-    update_session_status(session_id, "closed", token)
+    update_session_status(user_key, pmid, "closed", token)
 
     return True
