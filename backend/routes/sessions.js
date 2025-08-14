@@ -82,21 +82,31 @@ router.post('/save', async (req, res) => {
   }
 });
 
-// Update SessionStatus for a session by SessionID
-router.patch('/status/:id', async (req, res) => {
-  const { status } = req.body;
+// Update SessionStatus for a session by userKey and pmid
+router.patch('/status', async (req, res) => {
+  const { userKey, pmid, status } = req.body;
   const allowedStatuses = ["open", "closed", "abandoned", "negative"];
+  
+  if (!userKey || !pmid || !status) {
+    return res.status(400).json({ error: "userKey, pmid, and status are required" });
+  }
+  
   if (!allowedStatuses.includes(status)) {
     return res.status(400).json({ error: "Invalid status value" });
   }
+  
   try {
-    const session = await SessionState.findByPk(req.params.id);
+    const session = await SessionState.findOne({
+      where: { userID: userKey, PMID: pmid, SessionStatus: "open" }
+    });
+    
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
     }
+    
     session.SessionStatus = status;
     await session.save();
-    res.json({ success: true, SessionID: session.SessionID, newStatus: status });
+    res.json({ success: true, userKey, pmid, newStatus: status });
   } catch (err) {
     console.error("Error updating session status:", err);
     res.status(500).json({ error: "Database error" });
