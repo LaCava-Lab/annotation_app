@@ -180,15 +180,15 @@ def fetch_session_state(user_key, pmid, token):
     except Exception:
         return None
 
-def update_session_status(session_id, status, token):
+def update_session_status(user_key, pmid, status, token):
     """
     Update the SessionStatus field for a session.
     Allowed status values: "open", "closed", "abandoned", "negative"
     """
     try:
         resp = requests.patch(
-            f"{BACKEND_URL}/sessions/status/{session_id}",
-            json={"status": status},
+            f"{BACKEND_URL}/sessions/status",
+            json={"userKey": user_key, "pmid": pmid, "status": status},
             cookies={"token": token},
             timeout=10
         )
