@@ -4,9 +4,9 @@ import streamlit as st
 st.set_page_config(initial_sidebar_state="collapsed")
 st.set_option("client.showSidebarNavigation", False)
 
-from ous import get_pmid
+from src.various import get_pmid
 from streamlit_cookies_manager import CookieManager
-from data import login_user
+from src.database import login_user
 
 # Initialize the cookie manager
 cookies = CookieManager(prefix="annotation_app_")

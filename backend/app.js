@@ -4,6 +4,7 @@ const app = express();
 require('dotenv').config();
 const path = require('path');
 const morgan = require('morgan');
+const chalk = require('chalk');
 const authenticateToken = require('./middleware/auth');
 const userRoutes = require('./routes/users');
 const paperRoutes = require('./routes/papers');
@@ -19,7 +20,20 @@ const cookieParser = require('cookie-parser');
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(morgan('dev'));
+app.use(morgan((tokens, req, res) => {
+  let log = [
+    chalk.cyan(tokens.method(req, res)),                
+    chalk.yellow(tokens.url(req, res)),                 
+    chalk.green(tokens.status(req, res)),               
+    chalk.magenta(tokens['response-time'](req, res) + ' ms')
+  ].join(' ');
+
+  if (req.body && Object.keys(req.body).length > 0) {
+    log += '\n' + chalk.white(`Body: ${JSON.stringify(req.body)}`);
+  }
+
+  return log;
+}));
 app.use('/users', userRoutes);
 app.use('/papers', authenticateToken, paperRoutes);
 app.use('/auth', authRoutes);

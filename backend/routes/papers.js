@@ -9,8 +9,6 @@ const DEMO_PMIDS = ['35100360', '38096902', '29309035', '37924094', '36542723'];
 router.get('/', async (req, res) => {
   try {
     const isDemo = req.user?.UserEmail === DEMO_EMAIL;
-    console.log(req.user.UserEmail);
-
     const condition = isDemo
       ? { PMID: { [Op.in]: DEMO_PMIDS } }
       : {};

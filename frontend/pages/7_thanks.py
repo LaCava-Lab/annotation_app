@@ -1,8 +1,8 @@
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
-from ous import handle_redirects, get_user_key, get_token, handle_auth_error
+from src.various import handle_redirects, get_user_key, get_token, handle_auth_error
 from process_interchange import thanks
-from data import fetch_user_info, fetch_paper_info
+from src.database import fetch_user_info, fetch_paper_info
 
 # Set page configuration
 st.set_page_config(page_title="Thank You", layout="wide", initial_sidebar_state="collapsed")

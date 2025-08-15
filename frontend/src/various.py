@@ -222,6 +222,7 @@ def load_paper_metadata(_cookies, papers_completed, papers_abandoned):
             "link": paper.get("DOI_URL", ""),
             "filename": pmid,
             "pmid": pmid,
+            "pmcid": paper.get("PMCID", ""),
             "abstract": paper.get('Abstract', "")
         })
     return result
@@ -238,9 +239,9 @@ def refresh_paper_list(all_papers):
         if k in st.session_state:
             del st.session_state[k]
 
-def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_doi_by_pmid):
+def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_doi_by_pmid=None):
     """
-    Fetches fulltext and DOI for a paper by PMID, normalizes, and returns (df, tab_names, doi_link).
+    Fetches fulltext and PMCID for a paper by PMID, normalizes, and returns (df, tab_names, fulltext_link).
     """
     def normalize_section_name(section):
         s = section.strip().upper()
@@ -273,10 +274,19 @@ def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_do
     df = df[~df["Section"].str.upper().isin(["ISSUE", "FIG"])]
     df["section_type"] = df["Section"].apply(normalize_section_name)
     tab_names = df["section_type"].drop_duplicates().tolist()
-    doi_link = fetch_doi_by_pmid(pmid, token)
-    if doi_link and not str(doi_link).startswith("http"):
-        doi_link = f"https://doi.org/{doi_link}"
-    return df, tab_names, doi_link
+    
+    # Get PMCID from the fulltext data
+    pmcid = None
+    if "PMCID" in df.columns:
+        pmcid_series = df["PMCID"].dropna().unique()
+        if len(pmcid_series) > 0 and str(pmcid_series[0]).strip().upper().startswith("PMC"):
+            pmcid = str(pmcid_series[0]).strip()
+    if pmcid:
+        fulltext_link = f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/"
+    else:
+        fulltext_link = None
+
+    return df, tab_names, fulltext_link
 
 def load_state_from_backend(cookies, pmid):
     if not st.session_state.get("backend_loaded", False):

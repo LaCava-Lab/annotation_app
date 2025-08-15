@@ -1,10 +1,10 @@
 import uuid
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
-from database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, \
+from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, \
 fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_paper_info,save_annotations_to_db
-from subpage import Subpage
-from various import get_pmid, handle_redirects, get_token, get_user_key, fetch_and_prepare_paper_data, \
+from src.subpage import Subpage
+from src.various import get_pmid, handle_redirects, get_token, get_user_key, fetch_and_prepare_paper_data, \
 load_state_from_backend, handle_auth_error, send_to_thanks_no_PI_exp
 from st_components.BreadCrumbs import BreadCrumbs
 
@@ -407,6 +407,7 @@ def save():
                     for solution_list in experiment.get("solutions", []):
                         for solution in solution_list:
                             solution["uuid"] = str(uuid.uuid4())
+                            
             experiments = [{
                 **item,
                 "baits": item.get("baits", []),

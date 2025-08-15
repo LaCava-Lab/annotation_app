@@ -65,28 +65,6 @@ class Subpage:
                                                 subtab[i] = solution
                                                 break
 
-            # for experiment in self.coffee_break_1_saved.to_dict(orient='records'):
-            #     section = st.session_state.subpages[index]["experiments"][experiment["section"]]
-            #     for i,nested_exp in enumerate(section):
-            #         if nested_exp["absolute_index"] == experiment["absolute_index"]:
-            #             # st.session_state.subpages[index]["experiments"][experiment["section"]][i]["type"] = experiment["exp_type"]
-            #             if(experiment["alt_exp_name"] == ""):
-            #                 st.session_state.subpages[index]["experiments"][experiment["section"]][i]["alt_exp_text"] = None
-            #             else:
-            #                 st.session_state.subpages[index]["experiments"][experiment["section"]][i]["alt_exp_text"] = experiment["alt_exp_name"]
-            #
-            #             for j,solution_set in enumerate(nested_exp["solutions"]):
-            #                 for k,solution in enumerate(solution_set):
-            #                     # st.session_state.subpages[index]["experiments"][experiment["section"]][i]["solutions"][j][k]["type"] = experiment["sol_type"]
-            #                     if solution["text"] == experiment["sol_name"]:
-            #                         if(experiment["alt_sol_name"] == ""):
-            #                             st.session_state.subpages[index]["experiments"][experiment["section"]][i]["solutions"][j][k]["alt_sol_text"] = None
-            #                         else:
-            #                             st.session_state.subpages[index]["experiments"][experiment["section"]][i]["solutions"][j][k]["alt_sol_text"] = experiment["alt_sol_name"]
-
-            # st.rerun()
-            # st.write(self.coffee_break_1_saved.to_dict(orient='records'))
-            # st.write(st.session_state.subpages[index]["experiments"])
         elif self.index == 3:
             current_bait = self.coffee_break_2_saved["baits"].to_dict(orient='records')
             current_interactors = self.coffee_break_2_saved["interactors"].to_dict(orient='records')
