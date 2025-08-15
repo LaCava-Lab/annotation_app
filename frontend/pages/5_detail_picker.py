@@ -107,8 +107,17 @@ if "paper_data" not in st.session_state:
     df, tab_names, doi_link = fetch_and_prepare_paper_data(
         pmid, cookies, fetch_fulltext_by_pmid, fetch_doi_by_pmid
     )
+
+    seen = set()
+    unique_tab_names = []
+    for x in tab_names:
+        key = x.upper()
+        if key not in seen:
+            seen.add(key)
+            unique_tab_names.append(key)  # already uppercased
+
     st.session_state["paper_data"] = df
-    st.session_state["tab_names"] = [*[s.upper() for s in tab_names]]
+    st.session_state["tab_names"] = unique_tab_names
     st.session_state["doi_link"] = doi_link
 
 paper_data = st.session_state["paper_data"]
@@ -315,10 +324,13 @@ def next():
         experiments = [
             item
             for i in tab_names
-            for item in st.session_state.subpages[index]["experiments"][i]
+            for item in st.session_state.subpages[index]["experiments"].get(i,{})
         ]
         # st.write(experiments)
         pi_exp = [exp for exp in experiments if exp.get("tag") == "PI Experiment"]
+
+        if len(pi_exp) == 0:
+            return
 
         for exp in pi_exp:
             # st.write(exp["solutions"])

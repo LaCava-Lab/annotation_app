@@ -6,7 +6,6 @@ from st_components.TableSelect import TableSelect
 from src.database import save_annotations_to_db
 from process_interchange import detail_picker
 
-
 class Subpage:
     def __init__(self, index, label, doi_link, paper_data, sidebar_content, selections, highlighter_labels,
                  coffee_break, coffee_break_display):
@@ -159,14 +158,14 @@ class Subpage:
                         **inner_item,
                         "background_color": "#6290C3" if self.check_tag(inner_item["tag"]) == "PI" else "#F25757",
                         "text_color": "white",
-                        "alt_sol_text": None,
+                        "alt_name": None,
                     } for inner_sublist in item["solutions"] for inner_item in inner_sublist]
                 } for sublist in self.experiments.values() for item in sublist]
                 flat_list_solutions = [{
                     **item,
                     "background_color": "#6290C3" if self.check_tag(item["tag"]) == "PI" else "#F25757",
                     "text_color": "white",
-                    "alt_sol_text": None,
+                    "alt_name": None,
                 } for sublist in self.selections for item in sublist]
 
                 current_tab = st.session_state.active_experiment_widget.get("section")
@@ -373,7 +372,7 @@ class Subpage:
                 for i, exp in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
                     if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                         for j, sol in enumerate(exp["solutions"]):
-                            if sol["text"] == solution_name or sol["alt_sol_text"] == solution_name:
+                            if sol["text"] == solution_name or sol["alt_name"] == solution_name:
                                 PH_old = sol["details"]["ph"]
                                 temp_old = sol["details"]["temp"]
                                 time_old = sol["details"]["time"] if sol["details"]["time"] else "0–5 min"
@@ -418,7 +417,7 @@ class Subpage:
                 for i, exp in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
                     if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                         for j, sol in enumerate(exp["solutions"]):
-                            if sol["text"] == solution_name or sol["alt_sol_text"] == solution_name:
+                            if sol["text"] == solution_name or sol["alt_name"] == solution_name:
                                 if st.session_state.select_type == "composition_listed":
                                     st.session_state.subpages[self.index - 1]["experiments"][i]["solutions"][j][
                                         "details"]["composition_selections"] = []
@@ -509,7 +508,7 @@ class Subpage:
                     for i, exp in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
                         if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                             for j, sol in enumerate(exp["solutions"]):
-                                if sol["text"] == solution_name or sol["alt_sol_text"] == solution_name:
+                                if sol["text"] == solution_name or sol["alt_name"] == solution_name:
                                     # flat_list = [{
                                     #     **item,
                                     #     "section": self.tabs[i]
@@ -520,7 +519,7 @@ class Subpage:
                 for exp in self.experiments:
                     if exp["text"] in experiment_name or exp["alt_exp_text"] == experiment_name:
                         for sol in exp["solutions"]:
-                            if sol["text"] == solution_name or sol["alt_sol_text"] == solution_name:
+                            if sol["text"] == solution_name or sol["alt_name"] == solution_name:
                                 st.session_state.active_solution_widget = sol
                 return "PI"
 
@@ -530,7 +529,7 @@ class Subpage:
         for i, exp in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
             if exp["text"] == exp_name or exp["alt_exp_text"] == exp_name:
                 for j, sol in enumerate(exp["solutions"]):
-                    if sol["text"] == sol_name or sol["alt_sol_text"] == sol_name:
+                    if sol["text"] == sol_name or sol["alt_name"] == sol_name:
                         name = details["name"]
                         quantity = details["quantity"]
                         unit = details["unit"]
@@ -690,9 +689,7 @@ class Subpage:
         first_page, *tabs = tabs_comp
         results = []
         absolute_index = st.session_state.active_experiment_widget.get("absolute_index")
-        solution_start_end_sum = st.session_state.active_solution_widget.get("start",
-                                                                             0) + st.session_state.active_solution_widget.get(
-            "end", 0)
+        solution_start_end_sum = st.session_state.active_solution_widget.get("start",0) + st.session_state.active_solution_widget.get("end", 0)
         select_type = st.session_state.select_type
         select_type_composition = st.session_state.select_type_composition
         # st.write(solution_start_end_sum)
@@ -1319,8 +1316,7 @@ class Subpage:
         # Use the same column layout as your nav buttons
         col_abandon, _, _ = st.columns([1, 1, 2])
         with col_abandon:
-            if st.button("Abandon Paper", type="secondary", use_container_width=True, disabled=abandon_limit_reached,
-                         key=f"abandon_{index}"):
+            if st.button("Abandon Paper", type="secondary", use_container_width=True, disabled=abandon_limit_reached,key=f"abandon_{index}"):
                 if remaining_restarts == 1:
                     st.session_state["show_abandon_confirm"] = True
                 else:
