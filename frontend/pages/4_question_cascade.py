@@ -1,8 +1,10 @@
 import streamlit as st
 from process_interchange import question_cascade
 from streamlit_cookies_manager import CookieManager
-from src.various import handle_redirects, get_selected_paper, get_token, get_user_key, handle_auth_error
-from src.database import fetch_paper_info, update_paper_in_progress, save_session_state
+from src.various import handle_redirects, get_selected_paper, get_token, get_user_key, handle_auth_error, \
+send_to_thanks_no_PI_exp
+from src.database import fetch_paper_info, update_paper_in_progress, save_session_state, \
+add_completed_paper,clear_paper_in_progress,save_annotations_to_db
 
 # Set page config
 st.set_page_config(page_title=question_cascade["title"], layout="wide", initial_sidebar_state="collapsed")
@@ -116,6 +118,9 @@ indents = [
 ]
 
 for idx, q in enumerate(question_cascade["questions"]):
+    if (idx == 1 or idx == 2 or idx == 3) and answers.get("q0") == "NO":
+        answers[f"q{idx}"] = "Not Applicable"
+        continue
     label = q["label"]
     col_width = col_widths[idx] if idx < len(col_widths) else None
     indent = indents[idx] if idx < len(indents) else 0
@@ -158,14 +163,23 @@ for idx, q in enumerate(question_cascade["questions"]):
     st.markdown("")  # spacing
 
 # Validation for all fields filled
-all_filled = (
-    answers["q0"] is not None and
-    answers["q1"].strip() != "" and
-    answers["q2"] is not None and
-    answers["q3"] is not None and
-    answers["q4"] is not None and
-    answers["q5"] is not None
-)
+all_filled = False
+
+if answers["q0"] == "NO":
+    all_filled = (
+        answers["q0"] is not None and
+        answers["q4"] is not None and
+        answers["q5"] is not None
+    )
+else:
+    all_filled = (
+        answers["q0"] is not None and
+        answers["q1"].strip() != "" and
+        answers["q2"] is not None and
+        answers["q3"] is not None and
+        answers["q4"] is not None and
+        answers["q5"] is not None
+    )
 
 col1, col2, col3 = st.columns([1.5, 1, 1])
 with col1:
@@ -197,4 +211,8 @@ with col2:
         
         # Create initial session state in backend with question answers
         save_session_state(user_key, pmid, {}, token, question_answers)
-        st.switch_page("pages/5_detail_picker.py")
+        
+        if answers["q0"] == "NO":
+            send_to_thanks_no_PI_exp(cookies,pmid,add_completed_paper,clear_paper_in_progress,save_annotations_to_db)
+        else:
+            st.switch_page("pages/5_detail_picker.py")

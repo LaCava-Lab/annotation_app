@@ -1,11 +1,11 @@
+import uuid
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
-
 from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, \
-fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_paper_info
+fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_paper_info,save_annotations_to_db
 from src.subpage import Subpage
 from src.various import get_pmid, handle_redirects, get_token, get_user_key, fetch_and_prepare_paper_data, \
-load_state_from_backend, handle_auth_error
+load_state_from_backend, handle_auth_error, send_to_thanks_no_PI_exp
 from st_components.BreadCrumbs import BreadCrumbs
 
 # CONFIG
@@ -107,8 +107,17 @@ if "paper_data" not in st.session_state:
     df, tab_names, doi_link = fetch_and_prepare_paper_data(
         pmid, cookies, fetch_fulltext_by_pmid, fetch_doi_by_pmid
     )
+
+    seen = set()
+    unique_tab_names = []
+    for x in tab_names:
+        key = x.upper()
+        if key not in seen:
+            seen.add(key)
+            unique_tab_names.append(key)  # already uppercased
+
     st.session_state["paper_data"] = df
-    st.session_state["tab_names"] = [*[s.upper() for s in tab_names]]
+    st.session_state["tab_names"] = unique_tab_names
     st.session_state["doi_link"] = doi_link
 
 paper_data = st.session_state["paper_data"]
@@ -126,8 +135,8 @@ if "subpages" not in st.session_state:
          },
          "selections": [],
          "highlighter_labels": [
-             ("PI experiment", "#6290C3"),
-             ("non-PI experiment", "#F25757")
+             ("PI Experiment", "#6290C3"),
+             ("non-PI Experiment", "#F25757")
          ],
          "coffee_break": False,
          "coffee_break_display": False,
@@ -142,8 +151,8 @@ if "subpages" not in st.session_state:
          "selections": [],
          "experiments": {},
          "highlighter_labels": [
-             ("PI experiment", "#6290C3"),
-             ("non-PI experiment", "#F25757")
+             ("PI Solution", "#6290C3"),
+             ("non-PI Solution", "#F25757")
          ],
          "coffee_break": True,
          "coffee_break_display": False,
@@ -248,6 +257,39 @@ page = subpages_data[st.session_state.current_page["index"]]
 
 
 # func to change page
+def check_has_pi_exp(experiments):
+    pi_experiments = [exp for exp in experiments if exp.get("tag") == "PI Experiment"]
+    if len(pi_experiments) > 0:
+        return True
+    else:
+        return False
+
+def check_only_non_pi_exp(experiments):
+    non_pi_experiments = [exp for exp in experiments if exp.get("tag") == "non-PI Experiment"]
+
+    if len(non_pi_experiments) > 0 and not check_has_pi_exp(experiments):
+        return True
+    else:
+        return False
+
+def check_no_exp(experiments):
+    if len(experiments) == 0:
+        return True
+    else:
+        return False
+
+@st.dialog("Are you sure?")
+def finish_paper():
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        if st.button("No", use_container_width=True):
+            st.rerun()
+
+    with col2:
+        if st.button("Yes", use_container_width=True):
+            send_to_thanks_no_PI_exp(cookies,pmid,add_completed_paper,clear_paper_in_progress,save_annotations_to_db)
+
 def reload():
     st.rerun()
 
@@ -262,9 +304,55 @@ def changePage(index):
 
 
 def next():
-    if st.session_state.current_page["index"] <= len(st.session_state.subpages) - 1:
-        index = st.session_state.current_page["index"]
+    index = st.session_state.current_page["index"]
 
+    if index == 0:
+        experiments = [
+            item
+            for i in range(len(tab_names))
+            for item in page.selections[i]
+        ]
+
+        if check_no_exp(experiments):
+            return
+
+        if check_only_non_pi_exp(experiments):
+            finish_paper()
+            return
+
+    if index == 1:
+        experiments = [
+            item
+            for i in tab_names
+            for item in st.session_state.subpages[index]["experiments"].get(i,{})
+        ]
+        # st.write(experiments)
+        pi_exp = [exp for exp in experiments if exp.get("tag") == "PI Experiment"]
+
+        if len(pi_exp) == 0:
+            return
+
+        for exp in pi_exp:
+            # st.write(exp["solutions"])
+
+            if len(exp["solutions"]) == 0:
+                return
+            else:
+                exp_solutions = [
+                    item
+                    for i in range(len(tab_names))
+                    for item in exp["solutions"][i]
+                ]
+
+                if len(exp_solutions) == 0:
+                    return
+
+                pi_solutions = [sol for sol in exp_solutions if sol.get("tag") == "PI Solution"]
+
+                if len(pi_solutions) == 0:
+                    return
+
+    if st.session_state.current_page["index"] <= len(st.session_state.subpages) - 1:
         if st.session_state.subpages[index]["coffee_break"] and not st.session_state.subpages[index][
             "coffee_break_display"]:
             st.session_state.subpages[index]["coffee_break_display"] = True
@@ -309,21 +397,29 @@ def save():
     if index < len(st.session_state.subpages) - 1:
         if "experiments" in st.session_state.subpages[next_page_index] and index == 0:
             experiments = {
-                tab_name: [
-                    {**item,
-                     "solutions": item.get("solutions", []),
-                     "section": tab_name,
-                     "type": page.check_tag(item["tag"]),
-                     "alt_exp_text": None,
-                     "absolute_index": sum(len(page.selections[k]) for k in range(i)) + j,
-                     "background_color": "#6290C3" if page.check_tag(item["tag"]) == "PI" else "#F25757",
-                     "text_color": "white"}
+                tab_name: [{
+                    "uuid": str(uuid.uuid4()),
+                    **item,
+                    "solutions": item.get("solutions", []),
+                    "section": tab_name,
+                    "type": page.check_tag(item["tag"]),
+                    "alt_exp_text": None,
+                    "absolute_index": sum(len(page.selections[k]) for k in range(i)) + j,
+                    "background_color": "#6290C3" if page.check_tag(item["tag"]) == "PI" else "#F25757",
+                    "text_color": "white"}
                     for j, item in enumerate(page.selections[i])
                 ]
                 for i, tab_name in enumerate(tab_names)
             }
             st.session_state.subpages[next_page_index]["experiments"] = experiments
         if "experiments" in st.session_state.subpages[next_page_index] and index == 1:
+            #add uuid for each solution
+            for section_name, experiments in page.experiments.items():
+                for experiment in experiments:
+                    for solution_list in experiment.get("solutions", []):
+                        for solution in solution_list:
+                            solution["uuid"] = str(uuid.uuid4())
+                            
             experiments = [{
                 **item,
                 "baits": item.get("baits", []),
@@ -410,20 +506,33 @@ if not page.coffee_break_display:
         st.title("Paper Annotation")
     page.sidebar_info()
     with st.sidebar:
-        col1, col2, col3 = st.columns([1, 1, 2])
+        if st.session_state.current_page["index"] != 0:
+            col1, col2, col3 = st.columns([1, 1, 2])
 
-        with col1:
-            if st.button("Prev", use_container_width=True):
-                prev()
+            with col1:
+                if st.button("Prev", use_container_width=True):
+                    prev()
 
-        with col2:
-            if st.button("Save", use_container_width=True):
-                save()
+            with col2:
+                if st.button("Save", use_container_width=True):
+                    save()
 
-        with col3:
-            if st.button("Save & Next", use_container_width=True):
-                save()
-                next()
+            with col3:
+                if st.button("Save & Next", use_container_width=True):
+                    save()
+                    next()
+
+        if st.session_state.current_page["index"] == 0:
+            col1, col2 = st.columns([1, 1])
+
+            with col1:
+                if st.button("Save", use_container_width=True):
+                    save()
+
+            with col2:
+                if st.button("Save & Next", use_container_width=True):
+                    save()
+                    next()
 
     page.active_experiment = st.session_state.active_experiment_widget
     page.active_solution = st.session_state.active_solution_widget
@@ -434,7 +543,7 @@ if not page.coffee_break_display:
 
     # print(st.session_state.subpages[page.index - 1].get("experiments"))
     # print(st.session_state)
-    # st.write(st.session_state["subpages"])
+    # st.write(st.session_state["subpages"][0])
 
     # reload select
     if page.select_type != st.session_state.select_type:
