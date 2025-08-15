@@ -1,0 +1,32 @@
+.breadcrumb {
+    justify-content: center;
+    background: transparent;
+}
+
+.breadcrumb-item::before {
+    line-height: 38px;
+}
+
+.a {
+    line-height: 38px;
+
+}
+
+.a-active {
+        color: #0056b3 !important;
+}
+
+.a-default {
+    color: #6c757d;
+}
+
+.item-visited {
+}
+
+.item-visited a {
+    color: #6390bf;
+}
+
+.item-disabled {
+    pointer-events: none;
+}
