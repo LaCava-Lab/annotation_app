@@ -395,11 +395,14 @@ else:
         get_user_key, get_token, add_completed_paper, clear_paper_in_progress
     )
 
+# Add demo flag
+is_demo = (get_user_key(cookies) == "U0017")
+
 page.display_abandon_paper_button(
     index, pmid, cookies,
     prev, save, next,
     get_user_key, get_token, add_completed_paper, clear_paper_in_progress, fetch_user_info, set_abandon_limit,
-    abandon_paper
+    abandon_paper, is_demo=is_demo
 )
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

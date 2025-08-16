@@ -222,7 +222,6 @@ def load_paper_metadata(_cookies, papers_completed, papers_abandoned):
             "link": paper.get("DOI_URL", ""),
             "filename": pmid,
             "pmid": pmid,
-            "pmcid": paper.get("PMCID", ""),
             "abstract": paper.get('Abstract', "")
         })
     return result
@@ -239,9 +238,9 @@ def refresh_paper_list(all_papers):
         if k in st.session_state:
             del st.session_state[k]
 
-def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_doi_by_pmid=None):
+def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_doi_by_pmid):
     """
-    Fetches fulltext and PMCID for a paper by PMID, normalizes, and returns (df, tab_names, fulltext_link).
+    Fetches fulltext and DOI for a paper by PMID, normalizes, and returns (df, tab_names, doi_link).
     """
     def normalize_section_name(section):
         s = section.strip().upper()
@@ -274,19 +273,10 @@ def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_do
     df = df[~df["Section"].str.upper().isin(["ISSUE", "FIG"])]
     df["section_type"] = df["Section"].apply(normalize_section_name)
     tab_names = df["section_type"].drop_duplicates().tolist()
-
-    # Get PMCID from the fulltext data
-    pmcid = None
-    if "PMCID" in df.columns:
-        pmcid_series = df["PMCID"].dropna().unique()
-        if len(pmcid_series) > 0 and str(pmcid_series[0]).strip().upper().startswith("PMC"):
-            pmcid = str(pmcid_series[0]).strip()
-    if pmcid:
-        fulltext_link = f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/"
-    else:
-        fulltext_link = None
-
-    return df, tab_names, fulltext_link
+    doi_link = fetch_doi_by_pmid(pmid, token)
+    if doi_link and not str(doi_link).startswith("http"):
+        doi_link = f"https://doi.org/{doi_link}"
+    return df, tab_names, doi_link
 
 def load_state_from_backend(cookies, pmid):
     if not st.session_state.get("backend_loaded", False):
@@ -357,70 +347,3 @@ def get_user_progress(cookies, pmid):
                 num_annotated += 1
 
     return num_protocols, num_solutions, num_annotated
-
-
-def reset_annotation_session(cookies: CookieManager, preserve_auth: bool = True):
-    """Completely reset annotation-related Streamlit session state.
-    """
-    # Keys we always keep if preserve_auth is True
-    auth_keys = {"userKey", "logged_in", "token"}
-    cookie_internal = {"CookieManager.sync_cookies", "CookieManager.queue"}
-
-    annotation_static = {
-        "paper_in_progress", "selected_paper", "completed_paper",
-        "subpages", "current_page", "pages", "cards",
-        "paper_metadata_picker", "paper_data", "tab_names",
-        "doi_link", "fulltext_link",
-        "active_experiment_widget", "active_solution_widget",
-        "active_experiment", "select_type", "select_type_composition",
-        "current_bait", "current_interactor", "details_listed",
-        "coffee_break_1_saved", "coffee_break_2_saved", "coffee_break_3_saved",
-        "show_abandon_confirm", "abandon_3"
-    }
-
-    dynamic_prefixes = [
-        "text_highlighter_"
-    ]
-
-    keys_to_delete = []
-    for k in list(st.session_state.keys()):
-        if preserve_auth and k in auth_keys:  # skip auth keys
-            continue
-        if k in cookie_internal:  # always preserve internal cookie manager keys
-            continue
-        # Delete if in static set
-        if k in annotation_static:
-            keys_to_delete.append(k)
-            continue
-        # Delete if matches any dynamic prefix
-        if any(k.startswith(pref) for pref in dynamic_prefixes):
-            keys_to_delete.append(k)
-
-    for k in keys_to_delete:
-        try:
-            del st.session_state[k]
-        except Exception:
-            pass
-
-    for ck in ["paper_in_progress", "selected_paper", "completed_paper"]:
-        try:
-            cookies[ck] = ""
-        except Exception:
-            pass
-
-    if not preserve_auth:
-        for ck in ["logged_in", "userKey", "token"]:
-            try:
-                cookies[ck] = ""
-            except Exception:
-                pass
-        st.session_state["logged_in"] = False
-
-    cookies.save()
-
-    try:
-        st.cache_data.clear()
-    except Exception:
-        pass
-
-    return keys_to_delete
