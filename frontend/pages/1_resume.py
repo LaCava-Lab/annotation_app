@@ -59,13 +59,16 @@ else:
 # Number of protocols and solutions annotated
 protocols, solutions, annotated = get_user_progress(cookies, pmid)
 
+# Demo account flag (never disable abandon button)
+is_demo = (user_key == "U0017")
+
 processed_text = resume["paper_in_progress"]["detail"].format(
     paper_title=paper_title,
     protocols=protocols,
     solutions=solutions,
     annotated=annotated,
     num_abandoned=num_abandoned,
-    remaining_restarts=remaining_restarts
+    remaining_restarts="∞" if is_demo else remaining_restarts
 )
 
 st.markdown(
@@ -79,23 +82,21 @@ spacer, col1, big_gap, col2, spacer2 = st.columns([1, 2, 1.5, 2, 1])
 with col1:
     if st.button(resume["paper_in_progress"]["buttons"][0]["text"], type="primary"):
         st.switch_page("pages/5_detail_picker.py")
+
 with col2:
-    # Button is only enabled if abandon_limit_reached is False
+    abandon_disabled = (abandon_limit_reached and not is_demo)
     if st.button(
         resume["paper_in_progress"]["buttons"][1]["text"],
-        disabled=abandon_limit_reached,
+        disabled=abandon_disabled,
     ):
-        # Abandon the current paper in backend
         if user_key and pmid:
             abandon_paper(user_key, pmid, token)
             clear_paper_in_progress(user_key, token)
-        # Clear the "paper_in_progress" cookie and session state
         cookies["paper_in_progress"] = ""
         cookies.save()
         if "paper_in_progress" in st.session_state:
             del st.session_state["paper_in_progress"]
-        # If this was the last allowed abandonment, set the abandon limit variable in backend
-        if remaining_restarts == 1:
+        if remaining_restarts == 1 and not is_demo:
             set_abandon_limit(user_key, token)
         # Redirect to the "Pick a new paper" page
         st.switch_page("pages/2_pick_paper.py")
