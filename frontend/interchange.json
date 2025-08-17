@@ -99,7 +99,7 @@
                 }
             ],
             "pick_another": "Pick another paper",
-            "confirm_paper": "Confirm paper"
+            "confirm_paper": "Confirm"
         },
         "5_detail_picker": {
             "title": "Paper Annotation",
