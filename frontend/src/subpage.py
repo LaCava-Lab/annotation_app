@@ -5,6 +5,7 @@ from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
 from src.database import save_annotations_to_db
 from process_interchange import detail_picker
+from src.various import reset_annotation_session
 
 
 class Subpage:
@@ -1203,7 +1204,8 @@ class Subpage:
             self, index, pmid, cookies,
             prev, save, next,
             get_user_key, get_token, add_completed_paper, clear_paper_in_progress,
-            fetch_user_info, set_abandon_limit, abandon_paper
+            fetch_user_info, set_abandon_limit, abandon_paper,
+            is_demo=False
     ):
         user_key = get_user_key(cookies)
         token = get_token(cookies)
@@ -1215,33 +1217,33 @@ class Subpage:
         papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
         num_abandoned = len(papers_abandoned)
         max_abandonments = 2
-        remaining_restarts = max(0, max_abandonments - num_abandoned)
         abandon_limit_reached = user_info.get("AbandonLimit", False)
+
+        if is_demo:
+            abandon_limit_reached = False
 
         if "show_abandon_confirm" not in st.session_state:
             st.session_state["show_abandon_confirm"] = False
 
-        # Use the same column layout as your nav buttons
         col_abandon, _, _ = st.columns([1, 1, 2])
         with col_abandon:
-            if st.button("Abandon Paper", type="secondary", use_container_width=True, disabled=abandon_limit_reached,
-                         key=f"abandon_{index}"):
-                if remaining_restarts == 1:
+            if st.button(
+                "Abandon Paper",
+                type="secondary",
+                use_container_width=True,
+                disabled=abandon_limit_reached and not is_demo,
+                key=f"abandon_{index}"
+            ):
+                remaining_restarts = max(0, max_abandonments - num_abandoned)
+                if not is_demo and remaining_restarts == 1:
                     st.session_state["show_abandon_confirm"] = True
                 else:
                     if user_key and pmid:
                         abandon_paper(user_key, pmid, token)
                         clear_paper_in_progress(user_key, token)
-                    for key in [
-                        "paper_in_progress", "selected_paper", "completed_paper",
-                        "cards", "current_page", "pages", "active_solution_btn",
-                        "paper_data", "tab_names", "doi_link"
-                    ]:
-                        if key in st.session_state:
-                            del st.session_state[key]
-                        if key in cookies:
-                            cookies[key] = ""
-                    cookies.save()
+
+                    reset_annotation_session(cookies)
+                    
                     st.success("Paper abandoned. Returning to paper selection.")
                     st.switch_page("pages/2_pick_paper.py")
 
@@ -1253,17 +1255,12 @@ class Subpage:
                     if user_key and pmid:
                         abandon_paper(user_key, pmid, token)
                         clear_paper_in_progress(user_key, token)
-                    for key in [
-                        "paper_in_progress", "selected_paper", "completed_paper",
-                        "cards", "current_page", "pages", "active_solution_btn",
-                        "paper_data", "tab_names", "doi_link"
-                    ]:
-                        if key in st.session_state:
-                            del st.session_state[key]
-                        if key in cookies:
-                            cookies[key] = ""
-                    cookies.save()
-                    set_abandon_limit(user_key, token)
+
+                    reset_annotation_session(cookies)
+
+                    if not is_demo:
+                        set_abandon_limit(user_key, token)
+
                     st.session_state["show_abandon_confirm"] = False
                     st.success("Paper abandoned. Returning to paper selection.")
                     st.switch_page("pages/2_pick_paper.py")
