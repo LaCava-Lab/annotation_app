@@ -403,7 +403,8 @@ def save():
                     "solutions": item.get("solutions", []),
                     "section": tab_name,
                     "type": page.check_tag(item["tag"]),
-                    "alt_exp_text": None,
+                    "name": item["text"],
+                    "alt_name": None,
                     "absolute_index": sum(len(page.selections[k]) for k in range(i)) + j,
                     "background_color": "#6290C3" if page.check_tag(item["tag"]) == "PI" else "#F25757",
                     "text_color": "white"}
