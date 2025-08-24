@@ -15,6 +15,7 @@ const sequelize = new Sequelize(isTest ? process.env.TEST_DB_URL : process.env.D
 const db = {};
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
+
 db.User = require('./user')(sequelize, Sequelize);
 db.Paper = require('./paper')(sequelize, Sequelize);
 db.FullText = require('./fulltext')(sequelize, Sequelize);
@@ -25,14 +26,11 @@ db.Bait = require('./bait')(sequelize, Sequelize);
 db.Interactor = require('./interactor')(sequelize, Sequelize);
 db.Chemistry = require('./chemistry')(sequelize, Sequelize);
 
-db.Paper.hasMany(db.FullText, { foreignKey: 'PMID' });
-db.FullText.belongsTo(db.Paper, { foreignKey: 'PMID' });
+db.Paper.hasMany(db.SessionState, { foreignKey: 'PMID' });
+db.SessionState.belongsTo(db.Paper, { foreignKey: 'PMID' });
 
 db.User.hasMany(db.SessionState, { foreignKey: 'userID' });
 db.SessionState.belongsTo(db.User, { foreignKey: 'userID' });
-
-db.Paper.hasMany(db.SessionState, { foreignKey: 'PMID' });
-db.SessionState.belongsTo(db.Paper, { foreignKey: 'PMID' });
 
 db.SessionState.hasMany(db.Experiment, { foreignKey: 'SessionID' });
 db.Experiment.belongsTo(db.SessionState, { foreignKey: 'SessionID' });
@@ -43,13 +41,13 @@ db.Solution.belongsTo(db.Experiment, { foreignKey: 'ExperimentID' });
 db.Experiment.hasMany(db.Bait, { foreignKey: 'ExperimentID' });
 db.Bait.belongsTo(db.Experiment, { foreignKey: 'ExperimentID' });
 
-db.Experiment.hasMany(db.Interactor, { foreignKey: 'ExperimentID' });
-db.Interactor.belongsTo(db.Experiment, { foreignKey: 'ExperimentID' });
+db.Solution.hasMany(db.Chemistry, { foreignKey: 'SolutionID' });
+db.Chemistry.belongsTo(db.Solution, { foreignKey: 'SolutionID' });
 
 db.Bait.hasMany(db.Interactor, { foreignKey: 'BaitID' });
 db.Interactor.belongsTo(db.Bait, { foreignKey: 'BaitID' });
 
-db.Solution.hasMany(db.Chemistry, { foreignKey: 'SolutionID' });
-db.Chemistry.belongsTo(db.Solution, { foreignKey: 'SolutionID' });
+db.Experiment.hasMany(db.Interactor, { foreignKey: 'ExperimentID' });
+db.Interactor.belongsTo(db.Experiment, { foreignKey: 'ExperimentID' });
 
 module.exports = db;

@@ -1,7 +1,12 @@
 module.exports = (sequelize, DataTypes) => {
   return sequelize.define('FullText', {
     EntryID: { type: DataTypes.STRING, primaryKey: true },
-    PMID: DataTypes.STRING,
+    PMID: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      references: { model: 'papers', key: 'PMID' },
+      onDelete: 'CASCADE'
+    },
     PMCID: DataTypes.STRING,
     Section: DataTypes.STRING,
     Type: DataTypes.TEXT,

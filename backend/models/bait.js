@@ -1,7 +1,12 @@
 module.exports = (sequelize, DataTypes) => {
   return sequelize.define('Bait', {
     BaitID: { type: DataTypes.STRING, primaryKey: true },
-    ExperimentID: DataTypes.STRING,
+    ExperimentID: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      references: { model: 'experiments', key: 'ExperimentID' },
+      onDelete: 'CASCADE'
+    },
     name: DataTypes.STRING,
     name_section: DataTypes.STRING,
     name_start: DataTypes.INTEGER,
