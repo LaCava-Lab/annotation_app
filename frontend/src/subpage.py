@@ -5,6 +5,8 @@ from text_highlighter import text_highlighter
 from st_components.TableSelect import TableSelect
 from src.database import save_annotations_to_db
 from process_interchange import detail_picker
+from src.various import reset_annotation_session
+
 
 class Subpage:
     def __init__(self, index, label, doi_link, paper_data, sidebar_content, selections, highlighter_labels,
@@ -27,7 +29,7 @@ class Subpage:
 
     def saveCoffeeBreak(self):
         index = self.index - 1
-
+        
         if self.index == 2 and self.coffee_break_1_saved:
             if self.coffee_break_1_saved["delete"] is True:
                 # page 0(experiment picker)
@@ -64,7 +66,6 @@ class Subpage:
                             current_solutions = exp["solutions"]
                             tab[i] = experiment
                             tab[i]["solutions"] = current_solutions
-
 
         elif self.index == 3:
             current_bait = self.coffee_break_2_saved["baits"].to_dict(orient='records')
@@ -107,8 +108,8 @@ class Subpage:
             # st.write(experiment)
             # st.write(solution)
             # st.write(altered_solution)
-            # st.write(st.session_state.subpages[index]["experiments"])
-            # st.warning("third coffee save")
+            st.write(st.session_state.subpages[index]["experiments"])
+            st.warning("third coffee save")
 
     def format_bait_props(self, text):
         return f"({text})" if text else ""
@@ -160,14 +161,14 @@ class Subpage:
                         **inner_item,
                         "background_color": "#6290C3" if self.check_tag(inner_item["tag"]) == "PI" else "#F25757",
                         "text_color": "white",
-                        "alt_name": None,
+                        "alt_sol_text": None,
                     } for inner_sublist in item["solutions"] for inner_item in inner_sublist]
                 } for sublist in self.experiments.values() for item in sublist]
                 flat_list_solutions = [{
                     **item,
                     "background_color": "#6290C3" if self.check_tag(item["tag"]) == "PI" else "#F25757",
                     "text_color": "white",
-                    "alt_name": None,
+                    "alt_sol_text": None,
                 } for sublist in self.selections for item in sublist]
 
                 current_tab = st.session_state.active_experiment_widget.get("section")
@@ -178,7 +179,7 @@ class Subpage:
                             st.session_state.subpages[self.index - 1]["experiments"][current_tab]):
                         if experiment["absolute_index"] == current_index:
                             updated_selections = [
-                                [{"uuid":"", **d, "alt_name": None, "type": self.check_tag(d["tag"])} for d in inner_list]
+                                [{**d, "alt_sol_text": None, "type": self.check_tag(d["tag"])} for d in inner_list]
                                 for inner_list in self.selections
                             ]
                             st.session_state.subpages[self.index - 1]["experiments"][current_tab][i][
@@ -714,7 +715,9 @@ class Subpage:
         first_page, *tabs = tabs_comp
         results = []
         absolute_index = st.session_state.active_experiment_widget.get("absolute_index")
-        solution_start_end_sum = st.session_state.active_solution_widget.get("start",0) + st.session_state.active_solution_widget.get("end", 0)
+        solution_start_end_sum = st.session_state.active_solution_widget.get("start",
+                                                                             0) + st.session_state.active_solution_widget.get(
+            "end", 0)
         select_type = st.session_state.select_type
         select_type_composition = st.session_state.select_type_composition
         # st.write(solution_start_end_sum)
@@ -1356,7 +1359,8 @@ class Subpage:
             self, index, pmid, cookies,
             prev, save, next,
             get_user_key, get_token, add_completed_paper, clear_paper_in_progress,
-            fetch_user_info, set_abandon_limit, abandon_paper
+            fetch_user_info, set_abandon_limit, abandon_paper,
+            is_demo=False
     ):
         user_key = get_user_key(cookies)
         token = get_token(cookies)
@@ -1368,32 +1372,33 @@ class Subpage:
         papers_abandoned = user_info.get("AbandonedPMIDs", []) or []
         num_abandoned = len(papers_abandoned)
         max_abandonments = 2
-        remaining_restarts = max(0, max_abandonments - num_abandoned)
         abandon_limit_reached = user_info.get("AbandonLimit", False)
+
+        if is_demo:
+            abandon_limit_reached = False
 
         if "show_abandon_confirm" not in st.session_state:
             st.session_state["show_abandon_confirm"] = False
 
-        # Use the same column layout as your nav buttons
         col_abandon, _, _ = st.columns([1, 1, 2])
         with col_abandon:
-            if st.button("Abandon Paper", type="secondary", use_container_width=True, disabled=abandon_limit_reached,key=f"abandon_{index}"):
-                if remaining_restarts == 1:
+            if st.button(
+                "Abandon Paper",
+                type="secondary",
+                use_container_width=True,
+                disabled=abandon_limit_reached and not is_demo,
+                key=f"abandon_{index}"
+            ):
+                remaining_restarts = max(0, max_abandonments - num_abandoned)
+                if not is_demo and remaining_restarts == 1:
                     st.session_state["show_abandon_confirm"] = True
                 else:
                     if user_key and pmid:
                         abandon_paper(user_key, pmid, token)
                         clear_paper_in_progress(user_key, token)
-                    for key in [
-                        "paper_in_progress", "selected_paper", "completed_paper",
-                        "cards", "current_page", "pages", "active_solution_btn",
-                        "paper_data", "tab_names", "doi_link"
-                    ]:
-                        if key in st.session_state:
-                            del st.session_state[key]
-                        if key in cookies:
-                            cookies[key] = ""
-                    cookies.save()
+
+                    reset_annotation_session(cookies)
+                    
                     st.success("Paper abandoned. Returning to paper selection.")
                     st.switch_page("pages/2_pick_paper.py")
 
@@ -1405,17 +1410,12 @@ class Subpage:
                     if user_key and pmid:
                         abandon_paper(user_key, pmid, token)
                         clear_paper_in_progress(user_key, token)
-                    for key in [
-                        "paper_in_progress", "selected_paper", "completed_paper",
-                        "cards", "current_page", "pages", "active_solution_btn",
-                        "paper_data", "tab_names", "doi_link"
-                    ]:
-                        if key in st.session_state:
-                            del st.session_state[key]
-                        if key in cookies:
-                            cookies[key] = ""
-                    cookies.save()
-                    set_abandon_limit(user_key, token)
+
+                    reset_annotation_session(cookies)
+
+                    if not is_demo:
+                        set_abandon_limit(user_key, token)
+
                     st.session_state["show_abandon_confirm"] = False
                     st.success("Paper abandoned. Returning to paper selection.")
                     st.switch_page("pages/2_pick_paper.py")

@@ -274,7 +274,7 @@ def fetch_and_prepare_paper_data(pmid, cookies, fetch_fulltext_by_pmid, fetch_do
     df = df[~df["Section"].str.upper().isin(["ISSUE", "FIG"])]
     df["section_type"] = df["Section"].apply(normalize_section_name)
     tab_names = df["section_type"].drop_duplicates().tolist()
-    
+
     # Get PMCID from the fulltext data
     pmcid = None
     if "PMCID" in df.columns:
@@ -358,31 +358,69 @@ def get_user_progress(cookies, pmid):
 
     return num_protocols, num_solutions, num_annotated
 
-def send_to_thanks_no_PI_exp(cookies,pmid,add_completed_paper,clear_paper_in_progress,save_annotations_to_db):
-    st.session_state["completed_paper"] = pmid
-    cookies["completed_paper"] = pmid
 
-    if "selected_paper" in st.session_state:
-        del st.session_state["selected_paper"]
-    cookies["selected_paper"] = ""
+def reset_annotation_session(cookies: CookieManager, preserve_auth: bool = True):
+    """Completely reset annotation-related Streamlit session state.
+    """
+    # Keys we always keep if preserve_auth is True
+    auth_keys = {"userKey", "logged_in", "token"}
+    cookie_internal = {"CookieManager.sync_cookies", "CookieManager.queue"}
 
-    if "paper_in_progress" in st.session_state:
-        del st.session_state["paper_in_progress"]
-    cookies["paper_in_progress"] = ""
+    annotation_static = {
+        "paper_in_progress", "selected_paper", "completed_paper",
+        "subpages", "current_page", "pages", "cards",
+        "paper_metadata_picker", "paper_data", "tab_names",
+        "doi_link", "fulltext_link",
+        "active_experiment_widget", "active_solution_widget",
+        "active_experiment", "select_type", "select_type_composition",
+        "current_bait", "current_interactor", "details_listed",
+        "coffee_break_1_saved", "coffee_break_2_saved", "coffee_break_3_saved",
+        "show_abandon_confirm", "abandon_3"
+    }
+
+    dynamic_prefixes = [
+        "text_highlighter_"
+    ]
+
+    keys_to_delete = []
+    for k in list(st.session_state.keys()):
+        if preserve_auth and k in auth_keys:  # skip auth keys
+            continue
+        if k in cookie_internal:  # always preserve internal cookie manager keys
+            continue
+        # Delete if in static set
+        if k in annotation_static:
+            keys_to_delete.append(k)
+            continue
+        # Delete if matches any dynamic prefix
+        if any(k.startswith(pref) for pref in dynamic_prefixes):
+            keys_to_delete.append(k)
+
+    for k in keys_to_delete:
+        try:
+            del st.session_state[k]
+        except Exception:
+            pass
+
+    for ck in ["paper_in_progress", "selected_paper", "completed_paper"]:
+        try:
+            cookies[ck] = ""
+        except Exception:
+            pass
+
+    if not preserve_auth:
+        for ck in ["logged_in", "userKey", "token"]:
+            try:
+                cookies[ck] = ""
+            except Exception:
+                pass
+        st.session_state["logged_in"] = False
+
     cookies.save()
 
-    user_key = get_user_key(cookies)
-    token = get_token(cookies)
-    if user_key:
-        # Only clear after add_completed_paper succeeds
-        if add_completed_paper(user_key, pmid):
-            clear_paper_in_progress(user_key, token)
+    try:
+        st.cache_data.clear()
+    except Exception:
+        pass
 
-    if "pages" in st.session_state:
-        del st.session_state["pages"]
-    if "current_page" in st.session_state:
-        del st.session_state["current_page"]
-
-    save_annotations_to_db(st.session_state, user_key, pmid, token)
-
-    st.switch_page("pages/7_thanks.py")
+    return keys_to_delete

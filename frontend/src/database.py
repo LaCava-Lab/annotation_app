@@ -292,81 +292,78 @@ def save_annotations_to_db(session_state, user_key, pmid, token):
     solutions = []
     experiment_id_map = {}  # Map experiment text to ExperimentID for reference
 
-    if "subpages" in session_state:
-        for section, exp_list in session_state["subpages"][1].get("experiments", {}).items():
-            for exp in exp_list:
-                experiment_id = str(uuid.uuid4())
-                experiment_id_map[exp["text"]] = experiment_id
-                experiments.append({
-                    "ExperimentID": experiment_id,
-                    "SessionID": session_id,
-                    "name": exp["text"],
-                    "name_section": exp["section"],
-                    "name_start": exp["start"],
-                    "name_end": exp["end"],
-                    "name_alt": exp.get("name_alt", ""),
-                    "type": exp["type"]
-                })
-                # Solutions for this experiment
-                for sol_list in exp.get("solutions", []):
-                    for sol in sol_list:
-                        solution_id = str(uuid.uuid4())
-                        solutions.append({
-                            "SolutionID": solution_id,
-                            "ExperimentID": experiment_id,
-                            "name": sol["text"],
-                            "name_section": exp["section"],
-                            "name_start": sol["start"],
-                            "name_end": sol["end"],
-                            "name_alt": sol.get("name_alt", ""),
-                            "type": sol.get("type", exp["type"]),
-                        })
+    for section, exp_list in session_state["subpages"][1].get("experiments", {}).items():
+        for exp in exp_list:
+            experiment_id = str(uuid.uuid4())
+            experiment_id_map[exp["text"]] = experiment_id
+            experiments.append({
+                "ExperimentID": experiment_id,
+                "SessionID": session_id,
+                "name": exp["text"],
+                "name_section": exp["section"],
+                "name_start": exp["start"],
+                "name_end": exp["end"],
+                "name_alt": exp.get("name_alt", ""),
+                "type": exp["type"]
+            })
+            # Solutions for this experiment
+            for sol_list in exp.get("solutions", []):
+                for sol in sol_list:
+                    solution_id = str(uuid.uuid4())
+                    solutions.append({
+                        "SolutionID": solution_id,
+                        "ExperimentID": experiment_id,
+                        "name": sol["text"],
+                        "name_section": exp["section"],
+                        "name_start": sol["start"],
+                        "name_end": sol["end"],
+                        "name_alt": sol.get("name_alt", ""),
+                        "type": sol.get("type", exp["type"]),
+                    })
 
     # 2. Gather baits and interactors from Experiment Details
     baits = []
     interactors = []
-
-    if "subpages" in session_state:
-        for exp in session_state["subpages"][2].get("experiments", []):
-            experiment_id = experiment_id_map.get(exp["text"])
-            if not experiment_id:
-                continue
-            for bait in exp.get("baits", []):
-                bait_id = str(uuid.uuid4())
-                baits.append({
+    for exp in session_state["subpages"][2].get("experiments", []):
+        experiment_id = experiment_id_map.get(exp["text"])
+        if not experiment_id:
+            continue
+        for bait in exp.get("baits", []):
+            bait_id = str(uuid.uuid4())
+            baits.append({
+                "BaitID": bait_id,
+                "ExperimentID": experiment_id,
+                "name": bait.get("name", ""),
+                "name_section": exp.get("section", ""),
+                "name_start": bait.get("start", None),
+                "name_end": bait.get("end", None),
+                "name_alt": bait.get("name_alt", ""),
+                "species_name": bait.get("species", ""),
+                "species_name_section": "",
+                "species_name_start": None,
+                "species_name_end": None,
+                "species_name_alt": "",
+                "isControl": bait.get("control", ""),
+                "bait_type": bait.get("type", ""),
+            })
+            for interactor in bait.get("interactors", []):
+                interactor_id = str(uuid.uuid4())
+                interactors.append({
+                    "InteractorID": interactor_id,
                     "BaitID": bait_id,
                     "ExperimentID": experiment_id,
-                    "name": bait.get("name", ""),
+                    "name": interactor.get("name", ""),
                     "name_section": exp.get("section", ""),
-                    "name_start": bait.get("start", None),
-                    "name_end": bait.get("end", None),
-                    "name_alt": bait.get("name_alt", ""),
-                    "species_name": bait.get("species", ""),
+                    "name_start": interactor.get("start", None),
+                    "name_end": interactor.get("end", None),
+                    "name_alt": interactor.get("name_alt", ""),
+                    "species_name": interactor.get("species", ""),
                     "species_name_section": "",
                     "species_name_start": None,
                     "species_name_end": None,
                     "species_name_alt": "",
-                    "isControl": bait.get("control", ""),
-                    "bait_type": bait.get("type", ""),
+                    "type": interactor.get("type", ""),
                 })
-                for interactor in bait.get("interactors", []):
-                    interactor_id = str(uuid.uuid4())
-                    interactors.append({
-                        "InteractorID": interactor_id,
-                        "BaitID": bait_id,
-                        "ExperimentID": experiment_id,
-                        "name": interactor.get("name", ""),
-                        "name_section": exp.get("section", ""),
-                        "name_start": interactor.get("start", None),
-                        "name_end": interactor.get("end", None),
-                        "name_alt": interactor.get("name_alt", ""),
-                        "species_name": interactor.get("species", ""),
-                        "species_name_section": "",
-                        "species_name_start": None,
-                        "species_name_end": None,
-                        "species_name_alt": "",
-                        "type": interactor.get("type", ""),
-                    })
 
     # 3. POST all experiments at once
     if experiments:
