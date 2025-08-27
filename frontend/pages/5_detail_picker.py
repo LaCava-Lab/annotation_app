@@ -1,6 +1,6 @@
+import uuid
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
-
 from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, \
 fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_paper_info
 from src.subpage import Subpage
