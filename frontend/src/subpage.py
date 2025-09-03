@@ -29,44 +29,30 @@ class Subpage:
 
     def saveCoffeeBreak(self):
         index = self.index - 1
-        
-        if self.index == 2 and self.coffee_break_1_saved:
-            if self.coffee_break_1_saved["delete"] is True:
-                # page 0(experiment picker)
-                for tab in st.session_state.subpages[0]["selections"]:
-                    for exp in tab:
-                        if exp["text"] == self.coffee_break_1_saved["text"]:
-                            tab.remove(exp)
-                            break
 
-                #page 1(solution picker)
-                for tab in st.session_state.subpages[1]["experiments"].values():
-                    for exp in tab:
-                        if exp["uuid"] == self.coffee_break_1_saved["uuid"]:
-                            tab.remove(exp)
-                            break
-            else:
-                #update experiment/solution inlcuding delition of solution
-                experiment = self.coffee_break_1_saved["experiment"]
-                solutions = experiment["solutions"]
-                for tab in st.session_state.subpages[1]["experiments"].values():
-                    for i,exp in enumerate(tab):
-                        if exp["uuid"] == experiment["uuid"]:
-                            for solution in solutions:
-                                for subtab in exp["solutions"]:
-                                    for j, sol in enumerate(subtab):
-                                        if solution["uuid"] == sol["uuid"]:
-                                            if solution["delete"]:
-                                                subtab.remove(sol)
-                                                break
-                                            else:
-                                                subtab[j] = solution
-                                                break
+        if self.index == 2:
+            for experiment in self.coffee_break_1_saved.to_dict(orient='records'):
+                section = st.session_state.subpages[index]["experiments"][experiment["section"]]
+                for i,nested_exp in enumerate(section):
+                    if nested_exp["absolute_index"] == experiment["absolute_index"]:
+                        # st.session_state.subpages[index]["experiments"][experiment["section"]][i]["type"] = experiment["exp_type"]
+                        if(experiment["alt_exp_name"] == ""):
+                            st.session_state.subpages[index]["experiments"][experiment["section"]][i]["alt_exp_text"] = None
+                        else:
+                            st.session_state.subpages[index]["experiments"][experiment["section"]][i]["alt_exp_text"] = experiment["alt_exp_name"]
 
-                            current_solutions = exp["solutions"]
-                            tab[i] = experiment
-                            tab[i]["solutions"] = current_solutions
+                        for j,solution_set in enumerate(nested_exp["solutions"]):
+                            for k,solution in enumerate(solution_set):
+                                # st.session_state.subpages[index]["experiments"][experiment["section"]][i]["solutions"][j][k]["type"] = experiment["sol_type"]
+                                if solution["text"] == experiment["sol_name"]:
+                                    if(experiment["alt_sol_name"] == ""):
+                                        st.session_state.subpages[index]["experiments"][experiment["section"]][i]["solutions"][j][k]["alt_sol_text"] = None
+                                    else:
+                                        st.session_state.subpages[index]["experiments"][experiment["section"]][i]["solutions"][j][k]["alt_sol_text"] = experiment["alt_sol_name"]
 
+            # st.rerun()
+            # st.write(self.coffee_break_1_saved.to_dict(orient='records'))
+            # st.write(st.session_state.subpages[index]["experiments"])
         elif self.index == 3:
             current_bait = self.coffee_break_2_saved["baits"].to_dict(orient='records')
             current_interactors = self.coffee_break_2_saved["interactors"].to_dict(orient='records')
@@ -199,8 +185,7 @@ class Subpage:
                     return "PI"
             elif self.sidebar_content["widget"] == "EXPERIMENT_DETAILS":
                 experiment_names = [
-                    # exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
-                    self.check_alts(exp,"name")
+                    exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
                     for exp in self.experiments
                     if exp["type"] == "PI" # Filtering only PI experiments
                 ]
@@ -246,8 +231,7 @@ class Subpage:
 
                     df = None
                     for exp in self.experiments:
-                        # if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
-                        if self.compare_names(exp,experiment_name,"name"):
+                        if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                             df = pd.DataFrame(exp["baits"]).drop(columns=["interactors"], errors="ignore")
                     if not df.empty:
                         st.data_editor(
@@ -267,8 +251,7 @@ class Subpage:
                             key="exp_editor_1")
                 else:
                     for i, experiment in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
-                        # if experiment["text"] == experiment_name or experiment["alt_exp_text"] == experiment_name:
-                        if self.compare_names(experiment,experiment_name,"name"):
+                        if experiment["text"] == experiment_name or experiment["alt_exp_text"] == experiment_name:
                             if len(st.session_state.subpages[self.index - 1]["experiments"][i]["baits"]) == 0:
                                 st.warning("There are no baits for this experiment!")
                                 return "PI"
@@ -279,8 +262,7 @@ class Subpage:
                                 bait_name = st.selectbox("Bait", bait_names)
                                 current_bait = []
                                 for bait in st.session_state.subpages[self.index - 1]["experiments"][i]["baits"]:
-                                    # if bait["name"] == bait_name or bait["alt_name"] == bait_name:
-                                    if self.compare_names(bait,bait_name,"name"):
+                                    if bait["name"] == bait_name or bait["alt_name"] == bait_name:
                                         cleaned = {k: v for k, v in bait.items() if k != "interactors"}
                                         current_bait = [cleaned]
                                 # st.table(current_bait)
@@ -327,11 +309,9 @@ class Subpage:
 
                                 df = None
                                 for exp in self.experiments:
-                                    # if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
-                                    if self.compare_names(exp,experiment_name,"name"):
+                                    if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                                         for bait in exp["baits"]:
-                                            # if bait["name"] == bait_name or bait["alt_name"] == bait_name:
-                                            if self.compare_names(bait,bait_name,"name"):
+                                            if bait["name"] == bait_name or bait["alt_name"] == bait_name:
                                                 df = pd.DataFrame(bait["interactors"])
                                 if not df.empty:
                                     st.data_editor(
@@ -349,8 +329,7 @@ class Subpage:
                 return "PI"
             elif self.sidebar_content["widget"] == "SOLUTION_DETAILS":
                 experiment_names = [
-                    # exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
-                    self.check_alts(exp,"name")
+                    exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
                     for exp in self.experiments
                     if exp["type"] == "PI" # Filtering only PI experiments
                 ]
@@ -368,12 +347,9 @@ class Subpage:
                     experiment_name = st.selectbox("Experiment", experiment_names)
 
                 for exp in self.experiments:
-                    # if self.check_alt_name(exp,experiment_name):
-                    # if exp["text"] in experiment_name or exp["alt_exp_text"] in experiment_name:
-                    if self.compare_names(exp,experiment_name,"name"):
+                    if exp["text"] in experiment_name or exp["alt_exp_text"] in experiment_name:
                         solution_names = [
-                            # sol["alt_name"] if sol["alt_name"] else sol["text"]
-                            self.check_alts(sol,"name")
+                            sol["alt_sol_text"] if sol["alt_sol_text"] else sol["text"]
                             for sol in exp["solutions"]
                             if sol["type"] == "PI"
                         ]
@@ -383,11 +359,9 @@ class Subpage:
                     solution_name = st.selectbox("Solution", solution_names)
 
                 for i, exp in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
-                    # if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
-                    if self.compare_names(exp,experiment_name,"name"):
+                    if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                         for j, sol in enumerate(exp["solutions"]):
-                            # if sol["text"] == solution_name or sol["alt_name"] == solution_name:
-                            if self.compare_names(sol,solution_name,"name"):
+                            if sol["text"] == solution_name or sol["alt_sol_text"] == solution_name:
                                 PH_old = sol["details"]["ph"]
                                 temp_old = sol["details"]["temp"]
                                 time_old = sol["details"]["time"] if sol["details"]["time"] else "0–5 min"
@@ -430,11 +404,9 @@ class Subpage:
                 st.session_state.select_type = f"composition_{composition.strip().split()[-1]}"
 
                 for i, exp in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
-                    # if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
-                    if self.compare_names(exp,experiment_name,"name"):
+                    if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                         for j, sol in enumerate(exp["solutions"]):
-                            # if sol["text"] == solution_name or sol["alt_name"] == solution_name:
-                            if self.compare_names(sol,solution_name,"name"):
+                            if sol["text"] == solution_name or sol["alt_sol_text"] == solution_name:
                                 if st.session_state.select_type == "composition_listed":
                                     st.session_state.subpages[self.index - 1]["experiments"][i]["solutions"][j][
                                         "details"]["composition_selections"] = []
@@ -523,11 +495,9 @@ class Subpage:
                         key="chems_editor_3")
 
                     for i, exp in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
-                        # if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
-                        if self.compare_names(exp,experiment_name,"name"):
+                        if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                             for j, sol in enumerate(exp["solutions"]):
-                                # if sol["text"] == solution_name or sol["alt_name"] == solution_name:
-                                if self.compare_names(sol,solution_name,"name"):
+                                if sol["text"] == solution_name or sol["alt_sol_text"] == solution_name:
                                     # flat_list = [{
                                     #     **item,
                                     #     "section": self.tabs[i]
@@ -536,11 +506,9 @@ class Subpage:
                                         "details"]["composition_selections"] = self.selections
 
                 for exp in self.experiments:
-                    # if exp["text"] in experiment_name or exp["alt_exp_text"] == experiment_name:
-                    if self.compare_names(exp,experiment_name,"name"):
+                    if exp["text"] in experiment_name or exp["alt_exp_text"] == experiment_name:
                         for sol in exp["solutions"]:
-                            # if sol["text"] == solution_name or sol["alt_name"] == solution_name:
-                            if self.compare_names(sol,solution_name,"name"):
+                            if sol["text"] == solution_name or sol["alt_sol_text"] == solution_name:
                                 st.session_state.active_solution_widget = sol
                 return "PI"
 
@@ -548,11 +516,9 @@ class Subpage:
 
     def addChems(self, exp_name, sol_name, details):
         for i, exp in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
-            # if exp["text"] == exp_name or exp["alt_exp_text"] == exp_name:
-            if self.compare_names(exp,exp_name,"name"):
+            if exp["text"] == exp_name or exp["alt_exp_text"] == exp_name:
                 for j, sol in enumerate(exp["solutions"]):
-                    # if sol["text"] == sol_name or sol["alt_name"] == sol_name:
-                    if self.compare_names(sol,sol_name,"name"):
+                    if sol["text"] == sol_name or sol["alt_sol_text"] == sol_name:
                         name = details["name"]
                         quantity = details["quantity"]
                         unit = details["unit"]
@@ -595,12 +561,10 @@ class Subpage:
 
         option = "interactors"
         for i, experiment in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
-            # if experiment["text"] == experiment_name or experiment["alt_exp_text"] == experiment_name:
-            if self.compare_names(experiment,experiment_name,"name"):
+            if experiment["text"] == experiment_name or experiment["alt_exp_text"] == experiment_name:
                 baits = st.session_state.subpages[self.index - 1]["experiments"][i]["baits"]
                 for j, bait in enumerate(baits):
-                    # if bait["name"] == bait_name or bait["alt_name"] == bait_name:
-                    if self.compare_names(bait,bait_name,"name"):
+                    if bait["name"] == bait_name or bait["alt_name"] == bait_name:
                         st.session_state.subpages[self.index - 1]["experiments"][i]["baits"][j]["interactors"].append({
                             "type": type,
                             "name": st.session_state.current_interactor['name']['text'],
@@ -632,10 +596,8 @@ class Subpage:
         option = "baits"
 
         for i, experiment in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
-            # if experiment["text"] == experiment_name or experiment["alt_exp_text"] == experiment_name:
-            if self.compare_names(experiment,experiment_name,"name"):
+            if experiment["text"] == experiment_name or experiment["alt_exp_text"] == experiment_name:
                 st.session_state.subpages[self.index - 1]["experiments"][i][option].append({
-                    "uuid": str(uuid.uuid4()),
                     "type": type,
                     "control": control,
                     "name": st.session_state.current_bait['name']['text'],
@@ -644,6 +606,7 @@ class Subpage:
                     "alt_tag": None,
                     "species": st.session_state.current_bait['species']['text'] if st.session_state.current_bait['species'] else None,
                     "alt_species": None,
+                    "uuid": str(uuid.uuid4()),
                     "interactors": []
                 })
         st.session_state.current_bait = {
@@ -762,31 +725,28 @@ class Subpage:
                 results.append(result)
         self.selections = results
 
-    def check_alts(self, obj, alt):
-        alt_name = obj.get(f"alt_{alt}")
-        if alt_name:  # covers both None and ""
-            return alt_name
-        return obj.get(f"{alt}")
-
-    def compare_names(self, obj, obj_name,alt):
-        if not obj_name:  # obj_name is None or empty
-            return False
-
-        # use alt_name if available and not empty
-        alt_name = obj.get(f"alt_{alt}")
-        if alt_name:  # this covers both None and ""
-            if alt_name in obj_name:
-                return True
-
-        # fallback to name
-        name = obj.get(f"{alt}")
-        if name:
-            if name in obj_name:
-                return True
-
-        return False
-
     def display_coffee_break_1(self):
+        experiments = []
+        for tab in self.experiments.values():
+            for experiment in tab:
+                for tab2 in experiment["solutions"]:
+                    for solution in tab2:
+                        exp = {
+                            "type": experiment["type"],
+                            "text": experiment["text"],
+                            "section": experiment["section"],
+                            "absolute_index": experiment["absolute_index"],
+                            "alt_text": experiment["alt_exp_text"],
+                            "solution": {
+                                "type": self.check_tag(solution["tag"]),
+                                "text": solution["text"],
+                                "alt_text": solution["alt_sol_text"]
+                            }
+                        }
+                        experiments.append(exp)
+
+        print(self.experiments)
+
         # Fetch Coffee Break A text from interchange.json
         coffee_break_a = detail_picker["coffee_break_a"]
         st.title(detail_picker["title"])
@@ -802,157 +762,52 @@ class Subpage:
                 </div>
             """, unsafe_allow_html=True)
 
-        experiments = []
-        for tab in self.experiments.values():
-            for experiment in tab:
-                experiments.append(experiment)
+        # Editable table for experiments and solutions
+        exp_df = pd.DataFrame([
+            {
+                "exp_name": e["text"],
+                "alt_exp_name": e["alt_text"],
+                "exp_type": e["type"],
+                "section": e["section"],
+                "absolute_index": e["absolute_index"],
+                "sol_name": e["solution"]["text"],
+                "alt_sol_name": e["solution"]["alt_text"],
+                "sol_type": e["solution"]["type"]
+            }
+            for e in experiments
+        ])
 
-        experiment_names = [
-            # exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
-            self.check_alts(exp,"name")
-            for exp in experiments
-        ]
-
-        experiment_name = None
-        solution_name = None
-        current_exp = {}
-        current_solution = {}
-
-
-        col1, col2 = st.columns([1, 4])
-
-        with col1:
-            experiment_name = st.selectbox("Experiment", experiment_names, key="experiment_select_cb1")
-
-        solutions = []
-        for exp in experiments:
-            # if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
-            if self.compare_names(exp, experiment_name, "name"):
-                current_exp = exp
-                solutions = exp["solutions"]
-        #flatten
-        solutions = [solution for sublist in solutions for solution in sublist]
-
-        st.markdown("#### Experiment Details:")
-
-        experiment_df = None
-        if current_exp:
-            experiment_df = pd.DataFrame([
-                {
-                    "uuid": current_exp["uuid"],
-                    "name": current_exp["text"],
-                    "type": current_exp["type"],
-                    "alt_name": current_exp["alt_name"],
-                    "start": current_exp["start"],
-                    "end": current_exp["end"],
-                    "section": current_exp["section"],
-                    "absolute_index": current_exp["absolute_index"],
-                    "text": current_exp["text"], #remove in the futre if prev for coffee break is removed
-                    "text_color": current_exp["text_color"], #remove in the futre if prev for coffee break is removed
-                    "tag": current_exp["tag"], #remove in the futre if prev for coffee break is removed
-                    "color": current_exp["color"], #remove in the futre if prev for coffee break is removed
-                    "background_color": current_exp["background_color"], #remove in the futre if prev for coffee break is removed
-                    "solutions": [],
-                }
-            ])
-        else:
-            experiment_df = pd.DataFrame([])
-
-        experiment_editor = st.data_editor(
-            experiment_df,
+        edited_df = st.data_editor(
+            exp_df,
             num_rows="dynamic",
             use_container_width=True,
-            key="experiment_editor",
             column_config={
-                "name": st.column_config.TextColumn("Experiment Name", disabled=True),
-                "type": st.column_config.SelectboxColumn("Experiment Type", options=["PI", "non-PI"]),
-                "alt_name": st.column_config.TextColumn("Alternative Experiment Name"),
+                "exp_name": st.column_config.TextColumn("Experiment name", disabled=True),
+                "alt_exp_name": st.column_config.TextColumn("Alternative Experiment Name"),
+                "exp_type": st.column_config.SelectboxColumn(
+                    "Experiment Type", options=["PI", "non-PI"]
+                ),
+                "sol_name": st.column_config.TextColumn("Solution name", disabled=True),
+                "alt_sol_name": st.column_config.TextColumn("Alternative Solution Name"),
+                "sol_type": st.column_config.SelectboxColumn(
+                    "Solution Type", options=["PI", "non-PI"]
+                ),
             },
-            column_order = ("name","type","alt_name")
+            column_order=("exp_name","alt_exp_name","exp_type","sol_name","alt_sol_name","sol_type"),
+            key="exp_editor"
         )
 
-        st.markdown("#### Solutions Details:")
+        # Validate and correct Solution Type based on Experiment Type
+        corrected = False
+        for idx, row in edited_df.iterrows():
+            if row["exp_type"] == "non-PI" and row["sol_type"] != "non-PI":
+                edited_df.at[idx, "sol_type"] = "non-PI"
+                corrected = True
 
-        solution_df = None
-        if current_exp:
-            solution_df = pd.DataFrame([
-                {
-                    "uuid": solution["uuid"],
-                    "name": solution["text"],
-                    "type": solution["type"],
-                    "alt_name": solution["alt_name"],
-                    "start": solution["start"],
-                    "end": solution["end"],
-                    "delete": False,
-                    "text": solution["text"], #remove in the futre if prev for coffee break is removed
-                    "tag": solution["tag"], #remove in the futre if prev for coffee break is removed
-                    "color": solution["color"], #remove in the futre if prev for coffee break is removed
-                } for solution in solutions
-            ])
+        if corrected:
+            st.error("Solution Type was set to 'non-PI' for rows where Experiment Type is 'non-PI'.")
         else:
-            solution_df = pd.DataFrame([])
-
-        # "background_color": "#6290C3" if page.check_tag(item["tag"]) == "PI" else "#F25757",
-        # "text_color": "white"
-        # "tag": "non-PI Experiemnt" if
-
-
-
-
-        solution_editor = st.data_editor(
-            solution_df,
-            num_rows="fixed",
-            use_container_width=True,
-            key="solution_editor",
-            column_config={
-                "name": st.column_config.TextColumn("Solution Name", disabled=True),
-                "type": st.column_config.SelectboxColumn("Solution Type", options=["PI", "non-PI"]),
-                "alt_name": st.column_config.TextColumn("Alternative Solution Name"),
-                "delete": "Delete",
-            },
-            column_order = ("delete","name","type","alt_name",)
-        )
-
-        if current_exp:
-            # drop all empty experiments
-            experiment_editor = experiment_editor[experiment_editor["name"].notna()]
-            records_experiment_editor = experiment_editor.to_dict(orient="records")
-            new_experiment = records_experiment_editor[0] if records_experiment_editor else None
-
-            if new_experiment is None:
-                self.coffee_break_1_saved = {
-                    "delete": True,
-                    "uuid": current_exp["uuid"],
-                    "text": current_exp["text"]
-                }
-            else:
-                new_experiment = {
-                    **new_experiment,
-                    "tag": "PI Experiment" if new_experiment["type"] == "PI" else "non-PI Experiment",
-                    "color": "#6290C3" if new_experiment["type"] == "PI" else "#F25757",
-                    "background_color": "#6290C3" if new_experiment["type"] == "PI" else "#F25757",
-                }
-
-                # drop all empty solutions
-                if not solution_editor.empty:
-                    solution_editor = solution_editor[solution_editor["name"].notna()]
-                    updated_solutions = [
-                        {
-                            **item,
-                            "tag": "PI Solution" if item["type"] == "PI" else "non-PI Solution",
-                            "color": "#6290C3" if item["type"] == "PI" else "#F25757"
-                        }
-                        for item in solution_editor.to_dict(orient="records")
-                    ]
-                    new_experiment["solutions"] = updated_solutions
-
-                    self.coffee_break_1_saved = {
-                        "delete": False,
-                        "experiment": new_experiment
-                    }
-
-        else:
-            self.coffee_break_1_saved = {}
+            self.coffee_break_1_saved = edited_df
 
     def display_coffee_break_2(self):
         # Fetch Coffee Break B text from interchange.json
@@ -971,8 +826,7 @@ class Subpage:
             """, unsafe_allow_html=True)
 
         experiment_names = [
-            # exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
-            self.check_alts(exp,"name")
+            exp["alt_exp_text"] if exp["alt_exp_text"] else exp["text"]
             for exp in self.experiments
             if exp["type"] == "PI"
         ]
@@ -986,12 +840,10 @@ class Subpage:
         with col2:
             baits = []
             for exp in self.experiments:
-                # if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
-                if self.compare_names(exp,experiment_name,"name"):
+                if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                     baits = exp["baits"]
             baits_names = [
-                # bait["alt_name"] if bait["alt_name"] else bait["name"]
-                self.check_alts(bait,"name")
+                bait["alt_name"] if bait["alt_name"] else bait["name"]
                 for bait in baits
             ]
             bait_name = st.selectbox("Bait 1", baits_names, key="bait_select")
@@ -999,12 +851,10 @@ class Subpage:
         current_exp = None
 
         for exp in self.experiments:
-            # if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
-            if self.compare_names(exp,experiment_name,"name"):
+            if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                 current_exp = exp
                 for bait_obj in exp["baits"]:
-                    # if bait_obj["name"] == bait_name or bait_obj["alt_name"] == bait_name:
-                    if self.compare_names(bait_obj,bait_name,"name"):
+                    if bait_obj["name"] == bait_name or bait_obj["alt_name"] == bait_name:
                         bait = bait_obj
         st.markdown("### Bait details:")
 
@@ -1098,8 +948,7 @@ class Subpage:
                 filtered_experiments.append(exp)
 
         experiment_names = [
-            # exp["alt_exp_text"] if exp.get("alt_exp_text") else exp["text"]
-            self.check_alts(exp,"name")
+            exp["alt_exp_text"] if exp.get("alt_exp_text") else exp["text"]
             for exp in filtered_experiments
         ]
 
@@ -1131,12 +980,10 @@ class Subpage:
             experiment_name = st.selectbox("Experiment", experiment_names, key="exp_type_3")
 
         for exp in self.experiments:
-            # if exp["text"] in experiment_name or exp["alt_exp_text"] in experiment_name:
-            if self.compare_names(exp,experiment_name,"name"):
+            if exp["text"] in experiment_name or exp["alt_exp_text"] in experiment_name:
                 experiment = exp
                 solution_names = [
-                    # sol["alt_name"] if sol["alt_name"] else sol["text"]
-                    self.check_alts(sol,"name")
+                    sol["alt_sol_text"] if sol["alt_sol_text"] else sol["text"]
                     for sol in exp["solutions"]
                     if sol["type"] == "PI"
                 ]
@@ -1146,11 +993,9 @@ class Subpage:
             solution_name = st.selectbox("Solution Type", solution_names, key="sol_type_3")
 
         for i, exp in enumerate(st.session_state.subpages[self.index - 1]["experiments"]):
-            # if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
-            if self.compare_names(exp,experiment_name,"name"):
+            if exp["text"] == experiment_name or exp["alt_exp_text"] == experiment_name:
                 for j, sol in enumerate(exp["solutions"]):
-                    # if sol["text"] == solution_name or sol["alt_name"] == solution_name:
-                    if self.compare_names(sol,solution_name,"name"):
+                    if sol["text"] == solution_name or sol["alt_sol_text"] == solution_name:
                         solution = sol
 
         time_arr = [
