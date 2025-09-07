@@ -1,6 +1,6 @@
-import uuid
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
+
 from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, \
 fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_paper_info
 from src.subpage import Subpage
@@ -309,17 +309,15 @@ def save():
     if index < len(st.session_state.subpages) - 1:
         if "experiments" in st.session_state.subpages[next_page_index] and index == 0:
             experiments = {
-                tab_name: [{
-                    "uuid": str(uuid.uuid4()),
-                    **item,
-                    "solutions": item.get("solutions", []),
-                    "section": tab_name,
-                    "type": page.check_tag(item["tag"]),
-                    "name": item["text"],
-                    "alt_name": None,
-                    "absolute_index": sum(len(page.selections[k]) for k in range(i)) + j,
-                    "background_color": "#6290C3" if page.check_tag(item["tag"]) == "PI" else "#F25757",
-                    "text_color": "white"}
+                tab_name: [
+                    {**item,
+                     "solutions": item.get("solutions", []),
+                     "section": tab_name,
+                     "type": page.check_tag(item["tag"]),
+                     "alt_exp_text": None,
+                     "absolute_index": sum(len(page.selections[k]) for k in range(i)) + j,
+                     "background_color": "#6290C3" if page.check_tag(item["tag"]) == "PI" else "#F25757",
+                     "text_color": "white"}
                     for j, item in enumerate(page.selections[i])
                 ]
                 for i, tab_name in enumerate(tab_names)
