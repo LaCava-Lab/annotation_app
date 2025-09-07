@@ -22,6 +22,30 @@ router.get('/by_user_pmid', async (req, res) => {
   }
 });
 
+// Get SessionID by userKey and pmid, where SessionStatus is 'open' or 'negative'
+router.get('/session_id_by_user_pmid', async (req, res) => {
+  const { userKey, pmid } = req.query;
+  if (!userKey || !pmid) {
+    return res.status(400).json({ error: "userKey and pmid are required" });
+  }
+  try {
+    const session = await SessionState.findOne({
+      where: {
+        userID: userKey,
+        PMID: pmid,
+        SessionStatus: ["open", "negative"]
+      }
+    });
+    if (session) {
+      res.json({ SessionID: session.SessionID });
+    } else {
+      res.status(404).json({ error: "Session not found" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 // Get session by SessionID
 router.get('/:id', async (req, res) => {
   try {

@@ -280,12 +280,33 @@ def fetch_fulltext_by_pmid(pmid, token):
 
 # -- Annotation saving functions --
 
+def get_session_id(user_key, pmid, token):
+    """
+    Query the backend for the open or negative session and return only the SessionID.
+    """
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/sessions/session_id_by_user_pmid",
+            params={"userKey": user_key, "pmid": pmid},
+            cookies={"token": token},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("SessionID")
+    except Exception:
+        pass
+    return None
+
 def save_annotations_to_db(session_state, user_key, pmid, token):
     """
     Save all annotated information from session_state to the backend tables.
     """
-
-    session_id = f"{user_key}_{pmid}"
+    # Fetch correct SessionID from backend
+    session_id = get_session_id(user_key, pmid, token)
+    if not session_id:
+        # Fallback mechanism
+        session_id = session_state.get("SessionID") or f"{user_key}_{pmid}"
 
     # 1. Gather all experiments and solutions
     experiments = []
