@@ -198,10 +198,10 @@ class Subpage:
                     st.subheader("Bait is:")
                     col4, col5 = st.columns(2)
                     with col4:
-                        select_type = st.selectbox("Select Type", ["Protein", "RNA", "DNA", "RNA:DNA hybrid"],
+                        select_type = st.selectbox("Select Type", ["Protein","ssRNA", "dsRNA", "ssDNA", "dsDNA", "R:D", "Other"],
                                                    key="bait_type_1")
                     with col5:
-                        select_control = st.selectbox("Select Control", ["Negative", "Positive", "No"],
+                        select_control = st.selectbox("Select Control", ["positive", "negative", "experimental"],
                                                       key="bait_type_2")
 
                     bait_info_type = st.radio("Bait has:",
@@ -370,7 +370,7 @@ class Subpage:
 
                 time_arr = [
                     "0–5 min", "5–10 min", "10–15 min", "15–30 min", "30–60 min",
-                    "1–2 h", "2–4 h", "4–8 h", "8–16 h"
+                    "1–2 h", "2–4 h", "4–8 h", "8–16 h", "Other"
                 ]
 
                 st.write("**Incubation details**")
@@ -1000,7 +1000,7 @@ class Subpage:
 
         time_arr = [
             "0–5 min", "5–10 min", "10–15 min", "15–30 min", "30–60 min",
-            "1–2 h", "2–4 h", "4–8 h", "8–16 h"
+            "1–2 h", "2–4 h", "4–8 h", "8–16 h", "Other"
         ]
 
         # pH, Temperature, Time
