@@ -10,6 +10,5 @@ module.exports = (sequelize, DataTypes) => {
   OpenSessionID: DataTypes.STRING,
   AbandonedSessionID: DataTypes.ARRAY(DataTypes.STRING),
   ClosedSessionID: DataTypes.ARRAY(DataTypes.STRING),
-  password: DataTypes.STRING
 }, { tableName: 'users', timestamps: false });
 };

@@ -1,8 +1,19 @@
 module.exports = (sequelize, DataTypes) => {
   return sequelize.define('SessionState', {
     SessionID: { type: DataTypes.STRING, primaryKey: true },
-    userID: DataTypes.STRING,
-    PMID: DataTypes.STRING,
+    userID: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      references: { model: 'users', key: 'UserKey' },
+      onDelete: 'CASCADE'
+    },
+
+    PMID: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      references: { model: 'papers', key: 'PMID' },
+      onDelete: 'CASCADE'
+    },
     SessionStatus: DataTypes.STRING,
     json_state: DataTypes.TEXT,
     q1: DataTypes.STRING,

@@ -1,7 +1,12 @@
 module.exports = (sequelize, DataTypes) => {
   return sequelize.define('Experiment', {
     ExperimentID: { type: DataTypes.STRING, primaryKey: true },
-    SessionID: DataTypes.STRING,
+    SessionID: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      references: { model: 'sessionstate', key: 'SessionID' },
+      onDelete: 'CASCADE'
+    },
     name: DataTypes.STRING,
     name_section: DataTypes.STRING,
     name_start: DataTypes.INTEGER,
