@@ -2,7 +2,7 @@ import streamlit as st
 from process_interchange import question_cascade
 from streamlit_cookies_manager import CookieManager
 from src.various import handle_redirects, get_selected_paper, get_token, get_user_key, handle_auth_error
-from src.database import fetch_paper_info, update_paper_in_progress, save_session_state
+from src.database import fetch_paper_info, update_paper_in_progress, save_session_state, update_session_status, add_completed_paper
 
 # Set page config
 st.set_page_config(page_title=question_cascade["title"], layout="wide", initial_sidebar_state="collapsed")
@@ -120,6 +120,12 @@ for idx, q in enumerate(question_cascade["questions"]):
     col_width = col_widths[idx] if idx < len(col_widths) else None
     indent = indents[idx] if idx < len(indents) else 0
 
+    # Skip questions 1a, 1b, 1c if the first question (idx 0) is answered "NO"
+    if idx in [1, 2, 3] and answers.get("q0") == "NO":
+        # Set default empty values for skipped questions
+        answers[f"q{idx}"] = ""
+        continue
+
     st.markdown(
         f'<div style="padding-left: {indent}px; margin-bottom: 10px;">{label}</div>',
         unsafe_allow_html=True
@@ -157,15 +163,24 @@ for idx, q in enumerate(question_cascade["questions"]):
             )
     st.markdown("")  # spacing
 
-# Validation for all fields filled
-all_filled = (
-    answers["q0"] is not None and
-    answers["q1"].strip() != "" and
-    answers["q2"] is not None and
-    answers["q3"] is not None and
-    answers["q4"] is not None and
-    answers["q5"] is not None
-)
+# Validation - different logic for YES vs NO answers
+if answers.get("q0") == "NO":
+    # For NO answer, only need Q1, Q2, Q3 (skip 1a, 1b, 1c)
+    all_filled = (
+        answers["q0"] is not None and
+        answers["q4"] is not None and
+        answers["q5"] is not None
+    )
+else:
+    # For YES answer, need all fields including 1a, 1b, 1c
+    all_filled = (
+        answers["q0"] is not None and
+        answers["q1"].strip() != "" and
+        answers["q2"] is not None and
+        answers["q3"] is not None and
+        answers["q4"] is not None and
+        answers["q5"] is not None
+    )
 
 col1, col2, col3 = st.columns([1.5, 1, 1])
 with col1:
@@ -183,18 +198,47 @@ with col2:
     if all_filled and st.session_state.get("confirm_paper_button"):
         st.set_option("client.showSidebarNavigation", False)
         user_key = get_user_key(cookies)
-        update_paper_in_progress(user_key, pmid, token)
         
-        # Create question answers dictionary
-        question_answers = {
-            "q1": answers["q0"],
-            "q1a": answers["q1"],
-            "q1b": answers["q2"],
-            "q1c": answers["q3"],
-            "q2": answers["q4"],
-            "q3": answers["q5"]
-        }
-        
-        # Create initial session state in backend with question answers
-        save_session_state(user_key, pmid, {}, token, question_answers)
-        st.switch_page("pages/5_detail_picker.py")
+        # Handle different flows based on Q1 answer
+        if answers.get("q0") == "NO":
+            # Negative flow: don't update paper in progress, create negative session, go to thanks
+            question_answers = {
+                "q1": answers["q0"],
+                "q1a": "",  # Empty for skipped questions
+                "q1b": "",
+                "q1c": "",
+                "q2": answers["q4"],
+                "q3": answers["q5"]
+            }
+            
+            # Create session state with negative status
+            save_session_state(user_key, pmid, {}, token, question_answers)
+            
+            # Update session status to negative (this should be done after save_session_state creates it)
+            update_session_status(user_key, pmid, "negative", token)
+            
+            # Add paper to completed papers array (even for negative papers)
+            add_completed_paper(user_key, pmid)
+            
+            # Set completed paper for thanks page
+            cookies["completed_paper"] = pmid
+            st.session_state["completed_paper"] = pmid
+            
+            st.switch_page("pages/7_thanks.py")
+        else:
+            # Positive flow: normal annotation process
+            update_paper_in_progress(user_key, pmid, token)
+            
+            # Create question answers dictionary
+            question_answers = {
+                "q1": answers["q0"],
+                "q1a": answers["q1"],
+                "q1b": answers["q2"],
+                "q1c": answers["q3"],
+                "q2": answers["q4"],
+                "q3": answers["q5"]
+            }
+            
+            # Create initial session state in backend with question answers
+            save_session_state(user_key, pmid, {}, token, question_answers)
+            st.switch_page("pages/5_detail_picker.py")

@@ -22,7 +22,7 @@ router.get('/by_user_pmid', async (req, res) => {
   }
 });
 
-// Get SessionID by userKey and pmid, where SessionStatus is 'open' or 'negative'
+// Get SessionID by userKey and pmid, where SessionStatus is 'open'
 router.get('/session_id_by_user_pmid', async (req, res) => {
   const { userKey, pmid } = req.query;
   if (!userKey || !pmid) {
@@ -33,7 +33,7 @@ router.get('/session_id_by_user_pmid', async (req, res) => {
       where: {
         userID: userKey,
         PMID: pmid,
-        SessionStatus: ["open", "negative"]
+        SessionStatus: "open"
       }
     });
     if (session) {
