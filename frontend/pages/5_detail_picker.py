@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_cookies_manager import CookieManager
 
 from src.database import fetch_fulltext_by_pmid, add_completed_paper, clear_paper_in_progress, fetch_doi_by_pmid, \
-fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_paper_info
+fetch_user_info, set_abandon_limit, abandon_paper, save_session_state, fetch_paper_info, update_session_status
 from src.subpage import Subpage
 from src.various import get_pmid, handle_redirects, get_token, get_user_key, fetch_and_prepare_paper_data, \
 load_state_from_backend, handle_auth_error
@@ -377,7 +377,76 @@ index = st.session_state.current_page["index"]
 labels = st.session_state.subpages[index]["highlighter_labels"]
 
 ### display main subpage
-if not page.coffee_break_display:
+# Check if we should show confirmation dialog instead of main interface
+if st.session_state.get("show_no_pi_confirmation", False):
+    # Hide main interface and only show confirmation dialog
+    st.markdown("### Experiment Picker")
+    st.warning("⚠️ **No protein interaction (PI) experiments were identified.**")
+    st.markdown("""
+    Are you sure this paper doesn't contain any methods that preserve protein interactions 
+    in cell-free systems without cross-linking?
+    
+    If you proceed, this paper will be marked as not containing relevant experiments 
+    and you'll be taken to the Thank You page.
+    """)
+    
+    col_yes, col_no = st.columns([1, 1])
+    with col_yes:
+        if st.button("Yes, proceed to Thank You page", type="primary", use_container_width=True, key="confirm_yes_main"):
+            # User confirms no PI experiments - route to thanks page with negative session
+            user_key = get_user_key(cookies)
+            token = get_token(cookies)
+            
+            # Save current state
+            save()
+            
+            # Update session status to negative
+            update_session_status(user_key, pmid, "negative", token)
+            
+            # Set completed paper for thanks page
+            st.session_state["completed_paper"] = pmid
+            cookies["completed_paper"] = pmid
+
+            # Reset selected paper state
+            if "selected_paper" in st.session_state:
+                del st.session_state["selected_paper"]
+            cookies["selected_paper"] = ""
+
+            # Reset paper in progress state
+            if "paper_in_progress" in st.session_state:
+                del st.session_state["paper_in_progress"]
+            cookies["paper_in_progress"] = ""
+            cookies.save()
+
+            # Add paper to completed papers and clear from in progress
+            if user_key:
+                # Only clear after add_completed_paper succeeds
+                if add_completed_paper(user_key, pmid):
+                    clear_paper_in_progress(user_key, token)
+
+            # Clean up session state for annotation pages
+            if "pages" in st.session_state:
+                del st.session_state["pages"]
+            if "current_page" in st.session_state:
+                del st.session_state["current_page"]
+            if "subpages" in st.session_state:
+                del st.session_state["subpages"]
+            
+            # Clear confirmation state
+            st.session_state["show_no_pi_confirmation"] = False
+            
+            # Re-enable sidebar navigation
+            st.set_option("client.showSidebarNavigation", True)
+            
+            st.switch_page("pages/7_thanks.py")
+            
+    with col_no:
+        if st.button("No, let me review again", type="secondary", use_container_width=True, key="confirm_no_main"):
+            # User wants to review - stay on experiment picker
+            st.session_state["show_no_pi_confirmation"] = False
+            st.rerun()
+
+elif not page.coffee_break_display:
     if st.session_state.active_experiment == "non-PI" and page.index == 2:
         page.update_labels_type([labels[1]])
         page.main_page(tab_names)
@@ -413,20 +482,53 @@ if not page.coffee_break_display:
         st.title("Paper Annotation")
     page.sidebar_info()
     with st.sidebar:
-        col1, col2, col3 = st.columns([1, 1, 2])
+        # Different column layouts for first page vs other pages
+        current_index = st.session_state.current_page["index"]
+        if current_index == 0:
+            # On first page: only Save and Save & Next buttons (no Prev)
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                if st.button("Save", use_container_width=True):
+                    save()
+            # Save & Next will be handled in col2 below
+        else:
+            # On other pages: Prev, Save, and Save & Next buttons
+            col1, col2, col3 = st.columns([1, 1, 2])
+            with col1:
+                if st.button("Prev", use_container_width=True):
+                    prev()
+            with col2:
+                if st.button("Save", use_container_width=True):
+                    save()
+            # Save & Next will be handled in col3 below
 
-        with col1:
-            if st.button("Prev", use_container_width=True):
-                prev()
-
-        with col2:
-            if st.button("Save", use_container_width=True):
-                save()
-
-        with col3:
-            if st.button("Save & Next", use_container_width=True):
-                save()
-                next()
+        # Handle Save & Next button for the appropriate column
+        if current_index == 0:
+            # First page: Save & Next goes in col2
+            with col2:
+                # Check if there are any PI experiments
+                def has_pi_experiments():
+                    for tab_results in page.selections:
+                        for item in tab_results:
+                            if page.check_tag(item.get("tag", "")) == "PI":
+                                return True
+                    return False
+                
+                if st.button("Save & Next", use_container_width=True):
+                    if not has_pi_experiments():
+                        # No PI experiments found - show confirmation dialog
+                        st.session_state["show_no_pi_confirmation"] = True
+                        st.rerun()  # Immediately refresh to show confirmation dialog
+                    else:
+                        # Normal flow - has PI experiments
+                        save()
+                        next()
+        else:
+            # Other pages: Save & Next goes in col3
+            with col3:
+                if st.button("Save & Next", use_container_width=True):
+                    save()
+                    next()
 
     page.active_experiment = st.session_state.active_experiment_widget
     page.active_solution = st.session_state.active_solution_widget
