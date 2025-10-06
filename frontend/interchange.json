@@ -62,7 +62,7 @@
         },
         "4_question_cascade": {
             "title": "Question Cascade",
-            "description": "Use the link to the full-text paper to scan through it and then answer the quick questionnaire below. In this stage, you can go back through the \"Pick another\" button and change the paper as many times as you want. You will be allowed to abandon a \"Confirmed Paper\" later only twice. If you are happy with your selection, press \"Confirm paper\" to proceed to annotating your current selection.",
+            "description": "Use the link to the full-text paper to scan through it and then answer the quick questionnaire below. In this stage, you can go back through the \"Pick another\" button and change the paper as many times as you want. You will be allowed to abandon a \"Confirmed Paper\" later only twice. If you are happy with your selection, press \"Confirm\" to proceed to annotating your current selection.",
             "go_to_fulltext": "Go to full-text paper",
             "doi_warning": "DOI link not available for this paper.",
             "questionnaire_title": "### Questionnaire",
@@ -99,7 +99,7 @@
                 }
             ],
             "pick_another": "Pick another paper",
-            "confirm_paper": "Confirm paper"
+            "confirm_paper": "Confirm"
         },
         "5_detail_picker": {
             "title": "Paper Annotation",
