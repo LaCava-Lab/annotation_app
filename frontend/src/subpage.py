@@ -707,7 +707,7 @@ class Subpage:
 
         for i, (name, tab) in enumerate(zip(tab_names, tabs)):
             tab_annotations = []
-            if len(self.selections) > 0:
+            if len(self.selections) > 0 and i < len(self.selections):
                 # Filter out annotations with unknown tags
                 tab_annotations = [
                     ann for ann in self.selections[i]

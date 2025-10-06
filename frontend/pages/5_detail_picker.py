@@ -231,10 +231,10 @@ for i, subpage in enumerate(st.session_state.subpages):
             exp = st.session_state.active_experiment_widget
             absolute_index = exp.get("absolute_index")
             list = subpage["experiments"].get(exp.get("section"))
-            if list:
+            if list and absolute_index is not None and absolute_index < len(list):
                 selections = list[absolute_index]["solutions"]
     if "experiments" in subpage and index == 4:
-        if st.session_state.active_solution_widget:
+        if st.session_state.active_solution_widget and "details" in st.session_state.active_solution_widget:
             selections = st.session_state.active_solution_widget["details"]["composition_selections"]
 
     subpages_data.append(
@@ -446,6 +446,74 @@ if st.session_state.get("show_no_pi_confirmation", False):
             st.session_state["show_no_pi_confirmation"] = False
             st.rerun()
 
+elif st.session_state.get("show_no_pi_solutions_confirmation", False):
+    # Hide main interface and only show confirmation dialog for no PI solutions
+    st.markdown("### Solution Picker")
+    st.warning("⚠️ **No protein interaction (PI) solutions were identified.**")
+    st.markdown("""
+    Are you sure this paper doesn't contain any solutions that preserve protein interactions 
+    in cell-free systems without cross-linking?
+    
+    If you proceed, this paper will be marked as not containing relevant solutions 
+    and you'll be taken to the Thank You page.
+    """)
+    
+    col_yes, col_no = st.columns([1, 1])
+    with col_yes:
+        if st.button("Yes, proceed to Thank You page", type="primary", use_container_width=True, key="confirm_yes_solutions"):
+            # User confirms no PI solutions - route to thanks page with negative session
+            user_key = get_user_key(cookies)
+            token = get_token(cookies)
+            
+            # Save current state
+            save()
+            
+            # Update session status to negative
+            update_session_status(user_key, pmid, "negative", token)
+            
+            # Set completed paper for thanks page
+            st.session_state["completed_paper"] = pmid
+            cookies["completed_paper"] = pmid
+
+            # Reset selected paper state
+            if "selected_paper" in st.session_state:
+                del st.session_state["selected_paper"]
+            cookies["selected_paper"] = ""
+
+            # Reset paper in progress state
+            if "paper_in_progress" in st.session_state:
+                del st.session_state["paper_in_progress"]
+            cookies["paper_in_progress"] = ""
+            cookies.save()
+
+            # Add paper to completed papers and clear from in progress
+            if user_key:
+                # Only clear after add_completed_paper succeeds
+                if add_completed_paper(user_key, pmid):
+                    clear_paper_in_progress(user_key, token)
+
+            # Clean up session state for annotation pages
+            if "pages" in st.session_state:
+                del st.session_state["pages"]
+            if "current_page" in st.session_state:
+                del st.session_state["current_page"]
+            if "subpages" in st.session_state:
+                del st.session_state["subpages"]
+            
+            # Clear confirmation state
+            st.session_state["show_no_pi_solutions_confirmation"] = False
+            
+            # Re-enable sidebar navigation
+            st.set_option("client.showSidebarNavigation", True)
+            
+            st.switch_page("pages/7_thanks.py")
+            
+    with col_no:
+        if st.button("No, let me review again", type="secondary", use_container_width=True, key="confirm_no_solutions"):
+            # User wants to review - stay on solution picker
+            st.session_state["show_no_pi_solutions_confirmation"] = False
+            st.rerun()
+
 elif not page.coffee_break_display:
     if st.session_state.active_experiment == "non-PI" and page.index == 2:
         page.update_labels_type([labels[1]])
@@ -491,6 +559,12 @@ if not page.coffee_break_display:
                 if st.button("Save", use_container_width=True):
                     save()
             # Save & Next will be handled in col2 below
+        elif current_index == 1:
+            # Solution picker page: only Save and Save & Next buttons (no Prev on page 1)
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                if st.button("Save", use_container_width=True):
+                    save()
         else:
             # On other pages: Prev, Save, and Save & Next buttons
             col1, col2, col3 = st.columns([1, 1, 2])
@@ -521,6 +595,31 @@ if not page.coffee_break_display:
                         st.rerun()  # Immediately refresh to show confirmation dialog
                     else:
                         # Normal flow - has PI experiments
+                        save()
+                        next()
+        elif current_index == 1:
+            # Solution picker page: Save & Next goes in col2
+            with col2:
+                # Check if there are any PI solutions nested within experiments
+                def has_pi_solutions():
+                    # Check in experiments structure like the database save function
+                    if "experiments" in st.session_state.subpages[current_index]:
+                        for section, exp_list in st.session_state.subpages[current_index]["experiments"].items():
+                            for exp in exp_list:
+                                # Check nested solutions within this experiment
+                                for sol_list in exp.get("solutions", []):
+                                    for sol in sol_list:
+                                        if sol.get("type") == "PI" or page.check_tag(sol.get("tag", "")) == "PI":
+                                            return True
+                    return False
+                
+                if st.button("Save & Next", use_container_width=True):
+                    if not has_pi_solutions():
+                        # No PI solutions found - show confirmation dialog
+                        st.session_state["show_no_pi_solutions_confirmation"] = True
+                        st.rerun()  # Immediately refresh to show confirmation dialog
+                    else:
+                        # Normal flow - has PI solutions
                         save()
                         next()
         else:
