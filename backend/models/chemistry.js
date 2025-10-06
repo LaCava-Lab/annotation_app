@@ -7,8 +7,10 @@ module.exports = (sequelize, DataTypes) => {
       references: { model: 'solutions', key: 'SolutionID' },
       onDelete: 'CASCADE'
     },
-
-    name: DataTypes.STRING,
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
     name_section: DataTypes.STRING,
     name_start: DataTypes.INTEGER,
     name_end: DataTypes.INTEGER,
@@ -25,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     unit_name_start: DataTypes.INTEGER,
     unit_name_end: DataTypes.INTEGER,
     unit_name_alt: DataTypes.STRING,
-    
+
     type: DataTypes.STRING
   }, { tableName: 'chemistry', timestamps: false });
 };
