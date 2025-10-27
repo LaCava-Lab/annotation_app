@@ -53,6 +53,49 @@ else:
 if "paper_choices" not in st.session_state:
     refresh_paper_list(all_papers)
 
+# Search bar
+st.markdown("### Search for a specific paper")
+search_query = st.text_input(
+    "Search by title, authors, or PMCID",
+    placeholder="e.g., 'Smith' or 'PMC1234567' or 'protein interaction'",
+    key="paper_search"
+)
+
+# Filter papers based on search query
+if search_query and search_query.strip():
+    query_lower = search_query.strip().lower()
+    filtered_papers = []
+    
+    for paper in all_papers:
+        # Search in title
+        if query_lower in paper.get("title", "").lower():
+            filtered_papers.append(paper)
+            continue
+        # Search in authors
+        if query_lower in paper.get("authors", "").lower():
+            filtered_papers.append(paper)
+            continue
+        # Search in PMCID
+        pmcid = str(paper.get("pmcid", "")).upper()
+        if query_lower.upper() in pmcid:
+            filtered_papers.append(paper)
+            continue
+        # Search in PMID
+        if query_lower in str(paper.get("pmid", "")):
+            filtered_papers.append(paper)
+            continue
+    
+    if filtered_papers:
+        st.success(f"Found {len(filtered_papers)} matching paper(s)")
+        papers_to_display = filtered_papers[:5]  # Show up to 5 results
+    else:
+        st.warning("No papers found matching your search. Showing random papers instead.")
+        papers_to_display = st.session_state.paper_choices
+else:
+    papers_to_display = st.session_state.paper_choices
+
+st.markdown("---")
+
 # Initialize session state for selected option
 def select(option, key):
     if st.session_state.selected_option == option:
@@ -64,7 +107,7 @@ def select(option, key):
             if k != key:
                 st.session_state[k] = False
 
-for i, paper in enumerate(st.session_state.paper_choices):
+for i, paper in enumerate(papers_to_display):
     key = chr(ord("a") + i)
     label = (
         f"*{paper['authors']}*, "
@@ -119,7 +162,7 @@ with col2:
             if key in cookies:
                 cookies[key] = ""
         # Save the selected paper's metadata in session state
-        selected_paper = next(paper for paper in st.session_state.paper_choices if paper["filename"] == st.session_state.selected_option)
+        selected_paper = next(paper for paper in papers_to_display if paper["filename"] == st.session_state.selected_option)
         pmid = selected_paper["pmid"]
         st.session_state["selected_paper"] = pmid
         cookies["selected_paper"] = pmid
